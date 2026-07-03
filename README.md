@@ -27,7 +27,30 @@ docker compose up -d
 ```
 
 API: `http://localhost:8080`  
-Swagger: `http://localhost:8080/swagger-ui.html`
+Swagger UI: `http://localhost:8080/swagger-ui.html`  
+OpenAPI JSON: `http://localhost:8080/api-docs`
+
+### Swagger / OpenAPI (teste interativo)
+
+A documentação OpenAPI está completa com **exemplos prontos** para o recrutador testar sem montar JSON manualmente:
+
+1. Acesse `http://localhost:8080/swagger-ui.html`
+2. Expanda **Infrações** → **POST /api/v1/violations/evaluate**
+3. Clique em **Try it out**
+4. Selecione um exemplo no dropdown do body (ex.: *Com infração (exemplo da prova)*)
+5. Informe o header `x-origin` (ex.: `FIXED`) e execute
+6. Consulte a placa em **GET /api/v1/violations** com o mesmo valor
+
+Exemplos disponíveis no Swagger:
+
+| Exemplo | Resultado esperado |
+| -------- | ------------------ |
+| Com infração (exemplo da prova) | `hasViolation: true`, gravidade `SERIOUS` |
+| Sem infração (dentro da tolerância) | `hasViolation: false`, `violation: null` |
+| Placa formato antigo | Placa `ABC1234` aceita |
+| Via acima de 100 km/h | Tolerância percentual truncada |
+| Placa inválida (gera 400) | Erro `INVALID_LICENSE_PLATE` |
+
 
 ### Banco de dados (dev)
 

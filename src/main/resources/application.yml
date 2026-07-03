@@ -30,3 +30,11 @@ springdoc:
     path: /api-docs
   swagger-ui:
     path: /swagger-ui.html
+    operationsSorter: method
+    tagsSorter: alpha
+    tryItOutEnabled: true
+    displayRequestDuration: true
+    docExpansion: list
+    defaultModelsExpandDepth: 2
+    persistAuthorization: true
+  show-actuator: false
