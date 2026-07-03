@@ -1,6 +1,6 @@
 package com.velsis.speed_violation_service.domain.service;
 
-import com.velsis.speed_violation_service.api.exception.DuplicateViolationException;
+import com.velsis.speed_violation_service.domain.exception.DuplicateViolationException;
 import com.velsis.speed_violation_service.domain.model.CaptureOrigin;
 import com.velsis.speed_violation_service.domain.model.EvaluateViolationCommand;
 import com.velsis.speed_violation_service.persistence.repository.ViolationRepository;

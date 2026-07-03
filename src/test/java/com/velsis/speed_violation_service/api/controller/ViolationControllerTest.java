@@ -165,4 +165,41 @@ class ViolationControllerTest {
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.error").value("INVALID_LICENSE_PLATE"));
     }
+
+    @Test
+    @DisplayName("GET /violations sem licensePlate retorna 400")
+    void shouldRejectMissingLicensePlateParameter() throws Exception {
+        mockMvc.perform(get("/api/v1/violations"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("INVALID_LICENSE_PLATE"))
+                .andExpect(jsonPath("$.message").value("Missing required parameter: licensePlate"));
+    }
+
+    @Test
+    @DisplayName("GET /evaluate retorna 405")
+    void shouldRejectGetOnEvaluateEndpoint() throws Exception {
+        mockMvc.perform(get("/api/v1/violations/evaluate"))
+                .andExpect(status().isMethodNotAllowed())
+                .andExpect(jsonPath("$.error").value("METHOD_NOT_ALLOWED"));
+    }
+
+    @Test
+    @DisplayName("POST /violations retorna 405")
+    void shouldRejectPostOnListEndpoint() throws Exception {
+        mockMvc.perform(post("/api/v1/violations")
+                        .param("licensePlate", "ABC1D23"))
+                .andExpect(status().isMethodNotAllowed())
+                .andExpect(jsonPath("$.error").value("METHOD_NOT_ALLOWED"));
+    }
+
+    @Test
+    @DisplayName("POST /evaluate sem Content-Type application/json retorna 415")
+    void shouldRejectUnsupportedMediaType() throws Exception {
+        mockMvc.perform(post("/api/v1/violations/evaluate")
+                        .header("x-origin", "FIXED")
+                        .contentType(MediaType.APPLICATION_FORM_URLENCODED)
+                        .content("licensePlate=ABC1D23"))
+                .andExpect(status().isUnsupportedMediaType())
+                .andExpect(jsonPath("$.error").value("UNSUPPORTED_MEDIA_TYPE"));
+    }
 }

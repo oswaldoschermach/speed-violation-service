@@ -18,6 +18,9 @@ public record ApiErrorResponse(
                         "INVALID_ORIGIN",
                         "INVALID_REQUEST",
                         "DUPLICATE_VIOLATION",
+                        "NOT_FOUND",
+                        "METHOD_NOT_ALLOWED",
+                        "UNSUPPORTED_MEDIA_TYPE",
                         "INTERNAL_ERROR"
                 })
         ErrorCode error,

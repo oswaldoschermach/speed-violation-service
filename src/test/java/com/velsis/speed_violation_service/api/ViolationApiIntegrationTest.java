@@ -127,6 +127,14 @@ class ViolationApiIntegrationTest {
         assertThat(violationRepository.count()).isEqualTo(1);
     }
 
+    @Test
+    @DisplayName("rota inexistente retorna 404")
+    void shouldReturnNotFoundForUnknownRoute() throws Exception {
+        mockMvc.perform(get("/api/v1/naoexiste"))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.error").value("NOT_FOUND"));
+    }
+
     private void evaluateViolation(String body) throws Exception {
         mockMvc.perform(post("/api/v1/violations/evaluate")
                         .header("x-origin", "FIXED")

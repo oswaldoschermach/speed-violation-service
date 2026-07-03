@@ -1,4 +1,4 @@
-package com.velsis.speed_violation_service.api.exception;
+package com.velsis.speed_violation_service.domain.exception;
 
 import java.time.Instant;
 

@@ -2,18 +2,23 @@ package com.velsis.speed_violation_service.api.exception;
 
 import com.fasterxml.jackson.databind.exc.InvalidFormatException;
 import com.velsis.speed_violation_service.api.request.EvaluateViolationRequest;
+import com.velsis.speed_violation_service.domain.exception.DuplicateViolationException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.validation.FieldError;
+import org.springframework.web.HttpMediaTypeNotSupportedException;
+import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingRequestHeaderException;
+import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.HandlerMethodValidationException;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.ConstraintViolationException;
@@ -128,6 +133,32 @@ public class GlobalExceptionHandler {
                 ErrorCode.DUPLICATE_VIOLATION,
                 exception.getMessage(),
                 HttpStatus.CONFLICT);
+    }
+
+    @ExceptionHandler(MissingServletRequestParameterException.class)
+    public ResponseEntity<ApiErrorResponse> handleMissingParameter(MissingServletRequestParameterException exception) {
+        String parameterName = exception.getParameterName();
+        ErrorCode errorCode = resolveParameterErrorCode(parameterName);
+        log.warn("Missing required parameter: {}", parameterName);
+        return buildResponse(errorCode, "Missing required parameter: " + parameterName, HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
+    public ResponseEntity<ApiErrorResponse> handleMethodNotSupported(HttpRequestMethodNotSupportedException exception) {
+        log.warn("HTTP method not supported: {}", exception.getMethod());
+        return buildResponse(ErrorCode.METHOD_NOT_ALLOWED, "Method not allowed", HttpStatus.METHOD_NOT_ALLOWED);
+    }
+
+    @ExceptionHandler(NoResourceFoundException.class)
+    public ResponseEntity<ApiErrorResponse> handleNotFound(NoResourceFoundException exception) {
+        log.warn("Resource not found");
+        return buildResponse(ErrorCode.NOT_FOUND, "Resource not found", HttpStatus.NOT_FOUND);
+    }
+
+    @ExceptionHandler(HttpMediaTypeNotSupportedException.class)
+    public ResponseEntity<ApiErrorResponse> handleUnsupportedMediaType(HttpMediaTypeNotSupportedException exception) {
+        log.warn("Unsupported media type");
+        return buildResponse(ErrorCode.UNSUPPORTED_MEDIA_TYPE, "Unsupported media type", HttpStatus.UNSUPPORTED_MEDIA_TYPE);
     }
 
     @ExceptionHandler(Exception.class)

@@ -173,11 +173,12 @@ api/
 ├── request/        → DTOs de entrada + Bean Validation
 ├── response/       → DTOs de saída
 ├── validation/     → @ValidLicensePlate (regex compiladas)
-├── exception/      → tratamento centralizado de erros
+├── exception/      → handler HTTP, ErrorCode e ApiErrorResponse
 └── mapper/         → Request → Command, Entity → Response
 
 domain/
 ├── model/          → enums, EvaluateViolationCommand
+├── exception/      → exceções de regra de negócio (ex.: captura duplicada)
 └── service/
     ├── ViolationEvaluationService  → regras puras (sem Spring/JPA)
     └── ViolationService            → orquestra apuração + persistência
