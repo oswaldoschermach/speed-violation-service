@@ -1,0 +1,12 @@
+package com.velsis.speed_violation_service.api.exception;
+
+public enum ErrorCode {
+    INVALID_LICENSE_PLATE,
+    INVALID_MEASURED_SPEED,
+    INVALID_SPEED_LIMIT,
+    INVALID_EQUIPMENT_ID,
+    INVALID_CAPTURE_TIMESTAMP,
+    INVALID_ORIGIN,
+    INVALID_REQUEST,
+    INTERNAL_ERROR
+}
