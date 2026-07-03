@@ -130,7 +130,16 @@ public class ViolationController {
                                     @ExampleObject(
                                             name = "Velocidade medida inválida",
                                             value = OpenApiExamples.ERROR_INVALID_MEASURED_SPEED)
-                            }))
+                            })),
+            @ApiResponse(
+                    responseCode = "409",
+                    description = "Captura já registrada (placa + equipamento + timestamp duplicados).",
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(implementation = ApiErrorResponse.class),
+                            examples = @ExampleObject(
+                                    name = "Captura duplicada",
+                                    value = OpenApiExamples.ERROR_DUPLICATE_VIOLATION)))
     })
     @PostMapping("/evaluate")
     public EvaluateViolationResponse evaluate(

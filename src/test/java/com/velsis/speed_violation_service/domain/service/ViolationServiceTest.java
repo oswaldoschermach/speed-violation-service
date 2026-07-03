@@ -1,10 +1,12 @@
 package com.velsis.speed_violation_service.domain.service;
 
+import com.velsis.speed_violation_service.api.exception.DuplicateViolationException;
 import com.velsis.speed_violation_service.api.response.EvaluateViolationResponse;
 import com.velsis.speed_violation_service.config.ToleranceProperties;
 import com.velsis.speed_violation_service.domain.model.CaptureOrigin;
 import com.velsis.speed_violation_service.domain.model.EvaluateViolationCommand;
 import com.velsis.speed_violation_service.domain.model.ViolationSeverity;
+import com.velsis.speed_violation_service.persistence.ViolationPersistenceService;
 import com.velsis.speed_violation_service.persistence.entity.Violation;
 import com.velsis.speed_violation_service.persistence.repository.ViolationRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -21,8 +23,12 @@ import java.time.Instant;
 import java.time.ZoneOffset;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class ViolationServiceTest {
@@ -32,6 +38,9 @@ class ViolationServiceTest {
     @Mock
     private ViolationRepository violationRepository;
 
+    @Mock
+    private ViolationPersistenceService violationPersistenceService;
+
     private ViolationService violationService;
 
     @BeforeEach
@@ -39,13 +48,17 @@ class ViolationServiceTest {
         ViolationEvaluationService evaluationService =
                 new ViolationEvaluationService(new ToleranceProperties(7, 7, 100));
         Clock clock = Clock.fixed(FIXED_INSTANT, ZoneOffset.UTC);
-        violationService = new ViolationService(evaluationService, violationRepository, clock);
+        violationService = new ViolationService(
+                evaluationService, violationRepository, violationPersistenceService, clock);
     }
 
     @Test
     @DisplayName("orquestra apuração com infração, persiste e monta resposta")
     void shouldEvaluatePersistAndBuildResponseWhenViolationExists() {
         EvaluateViolationCommand command = command(92, 60);
+        when(violationRepository.existsByLicensePlateAndEquipmentIdAndCaptureTimestamp(
+                eq("ABC1D23"), eq("RAD-CWB-001"), eq(Instant.parse("2026-06-08T14:30:00Z"))))
+                .thenReturn(false);
 
         EvaluateViolationResponse response = violationService.evaluate(command);
 
@@ -58,7 +71,7 @@ class ViolationServiceTest {
         assertThat(response.processedAt()).isEqualTo(FIXED_INSTANT);
 
         ArgumentCaptor<Violation> captor = ArgumentCaptor.forClass(Violation.class);
-        verify(violationRepository).save(captor.capture());
+        verify(violationPersistenceService).persist(captor.capture());
 
         Violation saved = captor.getValue();
         assertThat(saved.getLicensePlate()).isEqualTo("ABC1D23");
@@ -79,7 +92,23 @@ class ViolationServiceTest {
         assertThat(response.violation()).isNull();
         assertThat(response.processedAt()).isEqualTo(FIXED_INSTANT);
 
-        verify(violationRepository, never()).save(org.mockito.Mockito.any());
+        verify(violationRepository, never()).save(any());
+        verify(violationPersistenceService, never()).persist(any());
+    }
+
+    @Test
+    @DisplayName("rejeita captura duplicada antes de persistir")
+    void shouldRejectDuplicateCapture() {
+        EvaluateViolationCommand command = command(92, 60);
+        when(violationRepository.existsByLicensePlateAndEquipmentIdAndCaptureTimestamp(
+                eq("ABC1D23"), eq("RAD-CWB-001"), eq(Instant.parse("2026-06-08T14:30:00Z"))))
+                .thenReturn(true);
+
+        assertThatThrownBy(() -> violationService.evaluate(command))
+                .isInstanceOf(DuplicateViolationException.class)
+                .hasMessage("Violation already registered for this capture");
+
+        verify(violationPersistenceService, never()).persist(any());
     }
 
     private EvaluateViolationCommand command(int measuredSpeed, int speedLimit) {

@@ -140,4 +140,12 @@ public final class OpenApiExamples {
               "timestamp": "2026-06-08T14:30:05Z"
             }
             """;
+
+    public static final String ERROR_DUPLICATE_VIOLATION = """
+            {
+              "error": "DUPLICATE_VIOLATION",
+              "message": "Violation already registered for this capture",
+              "timestamp": "2026-06-08T14:30:05Z"
+            }
+            """;
 }

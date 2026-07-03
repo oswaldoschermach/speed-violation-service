@@ -99,4 +99,39 @@ class ViolationApiIntegrationTest {
                 .andExpect(jsonPath("$").isArray())
                 .andExpect(jsonPath("$").isEmpty());
     }
+
+    @Test
+    @DisplayName("captura duplicada retorna 409 e mantém um único registro")
+    void shouldRejectDuplicateCaptureWithConflict() throws Exception {
+        String body = """
+                {
+                  "licensePlate": "ABC1D23",
+                  "measuredSpeed": 92,
+                  "speedLimit": 60,
+                  "equipmentId": "RAD-CWB-001",
+                  "captureTimestamp": "2026-06-08T14:30:00Z"
+                }
+                """;
+
+        evaluateViolation(body);
+        assertThat(violationRepository.count()).isEqualTo(1);
+
+        mockMvc.perform(post("/api/v1/violations/evaluate")
+                        .header("x-origin", "FIXED")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.error").value("DUPLICATE_VIOLATION"))
+                .andExpect(jsonPath("$.message").value("Violation already registered for this capture"));
+
+        assertThat(violationRepository.count()).isEqualTo(1);
+    }
+
+    private void evaluateViolation(String body) throws Exception {
+        mockMvc.perform(post("/api/v1/violations/evaluate")
+                        .header("x-origin", "FIXED")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isOk());
+    }
 }

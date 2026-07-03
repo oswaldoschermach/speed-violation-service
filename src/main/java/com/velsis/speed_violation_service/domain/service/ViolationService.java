@@ -1,5 +1,6 @@
 package com.velsis.speed_violation_service.domain.service;
 
+import com.velsis.speed_violation_service.api.exception.DuplicateViolationException;
 import com.velsis.speed_violation_service.api.mapper.ViolationMapper;
 import com.velsis.speed_violation_service.api.response.EvaluateViolationResponse;
 import com.velsis.speed_violation_service.api.response.StoredViolationResponse;
@@ -8,6 +9,8 @@ import com.velsis.speed_violation_service.domain.model.EvaluateViolationCommand;
 import com.velsis.speed_violation_service.domain.model.ViolationSeverity;
 import com.velsis.speed_violation_service.persistence.entity.Violation;
 import com.velsis.speed_violation_service.persistence.repository.ViolationRepository;
+import com.velsis.speed_violation_service.persistence.ViolationPersistenceService;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -21,18 +24,20 @@ public class ViolationService {
 
     private final ViolationEvaluationService evaluationService;
     private final ViolationRepository violationRepository;
+    private final ViolationPersistenceService violationPersistenceService;
     private final Clock clock;
 
     public ViolationService(
             ViolationEvaluationService evaluationService,
             ViolationRepository violationRepository,
+            ViolationPersistenceService violationPersistenceService,
             Clock clock) {
         this.evaluationService = evaluationService;
         this.violationRepository = violationRepository;
+        this.violationPersistenceService = violationPersistenceService;
         this.clock = clock;
     }
 
-    @Transactional
     public EvaluateViolationResponse evaluate(EvaluateViolationCommand command) {
         Instant processedAt = clock.instant();
         int consideredSpeed = evaluationService.calculateConsideredSpeed(
@@ -46,7 +51,7 @@ public class ViolationService {
 
         ViolationSeverity severity = evaluationService.determineSeverity(excessPercentage);
         Violation violation = buildViolation(command, consideredSpeed, excessPercentage, severity, processedAt);
-        saveViolation(violation);
+        saveViolation(violation, command);
 
         return buildResponse(command, consideredSpeed, excessPercentage, severity, processedAt);
     }
@@ -79,8 +84,22 @@ public class ViolationService {
                 .build();
     }
 
-    private void saveViolation(Violation violation) {
-        violationRepository.save(violation);
+    private void saveViolation(Violation violation, EvaluateViolationCommand command) {
+        if (violationRepository.existsByLicensePlateAndEquipmentIdAndCaptureTimestamp(
+                command.licensePlate(), command.equipmentId(), command.captureTimestamp())) {
+            throw duplicateViolationException(command);
+        }
+
+        try {
+            violationPersistenceService.persist(violation);
+        } catch (DataIntegrityViolationException exception) {
+            throw duplicateViolationException(command);
+        }
+    }
+
+    private DuplicateViolationException duplicateViolationException(EvaluateViolationCommand command) {
+        return new DuplicateViolationException(
+                command.licensePlate(), command.equipmentId(), command.captureTimestamp());
     }
 
     private EvaluateViolationResponse buildResponse(

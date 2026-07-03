@@ -17,6 +17,7 @@ public record ApiErrorResponse(
                         "INVALID_CAPTURE_TIMESTAMP",
                         "INVALID_ORIGIN",
                         "INVALID_REQUEST",
+                        "DUPLICATE_VIOLATION",
                         "INTERNAL_ERROR"
                 })
         ErrorCode error,

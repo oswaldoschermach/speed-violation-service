@@ -206,6 +206,7 @@ O enunciado aceita armazenamento **em memória**. Optamos por **PostgreSQL + Fly
 - O acesso concorrente (RF4) fica a cargo do banco, com garantias transacionais reais em vez de uma estrutura em memória sincronizada manualmente
 - Flyway garante schema versionado; Hibernate apenas valida (`ddl-auto: validate`)
 - Índices por `license_plate` (e `license_plate, processed_at`) tornam a consulta por placa eficiente mesmo com volume
+- Constraint única `(license_plate, equipment_id, capture_timestamp)` impede duplicatas; reenvios retornam **409** (`DUPLICATE_VIOLATION`)
 
 **Trade-off assumido:** rodar/hospedar exige um Postgres disponível (via `docker compose`). Para o escopo desta prova consideramos que a robustez de persistência e concorrência compensa a dependência extra. Uma estrutura em memória (`ConcurrentHashMap`) seria suficiente e removeria a dependência, ao custo de perder durabilidade.
 

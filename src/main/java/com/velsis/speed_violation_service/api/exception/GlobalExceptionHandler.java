@@ -120,6 +120,16 @@ public class GlobalExceptionHandler {
         return message != null && message.contains("captureTimestamp");
     }
 
+    @ExceptionHandler(DuplicateViolationException.class)
+    public ResponseEntity<ApiErrorResponse> handleDuplicateViolation(DuplicateViolationException exception) {
+        log.warn("Duplicate violation: licensePlate={}, equipmentId={}, captureTimestamp={}",
+                exception.getLicensePlate(), exception.getEquipmentId(), exception.getCaptureTimestamp());
+        return buildResponse(
+                ErrorCode.DUPLICATE_VIOLATION,
+                exception.getMessage(),
+                HttpStatus.CONFLICT);
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiErrorResponse> handleUnexpected(Exception exception) {
         log.error("Unexpected error", exception);
