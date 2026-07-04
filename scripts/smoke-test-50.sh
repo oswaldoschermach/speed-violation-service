@@ -4,10 +4,6 @@
 # Pré-requisitos: stack local em docker/local, curl, jq
 #   docker compose -f docker/local/compose.yaml up -d --build
 
-
-#aqui eu criei usando o chatgpt para testar a api localmente, com base no swagger.
-#muito util para testar a api localmente, mas nao para testar a api em producao.
-
 set -uo pipefail
 
 BASE_URL="${BASE_URL:-http://localhost:8080}"
