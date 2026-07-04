@@ -2,7 +2,7 @@
 
 Microserviço REST para apuração de infrações por excesso de velocidade (prova prática Velsis).
 
-> **Avaliador / recrutador:** comece pelo [Guia rápido](#guia-rápido-recrutador). Um comando sobe app + banco; teste via Swagger, Postman ou curl.
+> **Avaliador / recrutador:** comece pelo [Guia rápido](#guia-rápido-recrutador) ou pela seção [Entrega](#entrega). Um comando sobe app + banco; teste via Swagger, Postman ou curl.
 
 ## Tecnologias
 
@@ -11,6 +11,7 @@ Microserviço REST para apuração de infrações por excesso de velocidade (pro
 - PostgreSQL + Flyway
 - Maven
 - Springdoc OpenAPI (Swagger)
+- Collection Postman (`docs/postman/`)
 
 ## Pré-requisitos
 
@@ -71,6 +72,15 @@ Esperado: `speed-violation-postgres` e `speed-violation-app` com status `healthy
 | Health check | http://localhost:8080/actuator/health |
 | OpenAPI JSON | http://localhost:8080/api-docs |
 
+**Postman / Insomnia**
+
+1. Importe `docs/postman/speed-violation-service.postman_collection.json`
+2. Importe o environment `docs/postman/local.postman_environment.json`
+3. Selecione o environment **Speed Violation — Local**
+4. Execute na ordem sugerida na pasta *Infrações* (comece por *Com infração*)
+
+Para ambiente hospedado, altere `baseUrl` no environment para a URL pública.
+
 **Teste mínimo via curl**
 
 ```bash
@@ -130,6 +140,74 @@ cp docker/local/.env.example docker/local/.env
 # Ajuste SERVER_PORT e/ou POSTGRES_PORT em docker/local/.env
 docker compose -f docker/local/compose.yaml --env-file docker/local/.env up -d --build
 ```
+
+---
+
+## Entrega
+
+Informações para avaliação da prova prática Velsis.
+
+### Links
+
+| Item | URL |
+| ---- | --- |
+| Repositório Git (público) | https://github.com/oswaldoschermach/speed-violation-service |
+| API hospedada | _Pendente — deploy previsto em VPS Oracle Cloud_ |
+| Swagger (local) | http://localhost:8080/swagger-ui.html |
+
+> Quando a API estiver no ar, atualize a linha **API hospedada** com a URL pública (ex.: `http://<IP>:8080` ou domínio com HTTPS).
+
+### Passos de demo sugeridos
+
+1. **Subir o ambiente** — [Guia rápido](#guia-rápido-recrutador), passo 1 (`docker compose -f docker/local/compose.yaml up -d --build`)
+2. **Conferir saúde** — `curl http://localhost:8080/actuator/health` → `{"status":"UP"}`
+3. **Apurar infração** — Swagger, Postman (*Com infração*) ou curl do guia rápido → `hasViolation: true`, gravidade `SERIOUS`
+4. **Consultar placa** — `GET /api/v1/violations?licensePlate=ABC1D23` → lista com o registro
+5. **Sem infração** — Postman *Sem infração* → `hasViolation: false`; consulta não ganha novo item
+6. **Validação** — Postman *Placa inválida* → 400; *Captura duplicada* → 409 (após passo 3)
+7. **(Opcional)** `./scripts/smoke-test-50.sh` — 50 cenários automatizados
+
+### Collection Postman
+
+Arquivos em `docs/postman/`:
+
+```
+docs/postman/
+├── speed-violation-service.postman_collection.json
+└── local.postman_environment.json
+```
+
+Cenários incluídos (alinhados ao Swagger):
+
+| Request | Resultado esperado |
+| ------- | ------------------ |
+| Com infração (exemplo da prova) | 200, `SERIOUS`, `41.67%` |
+| Sem infração | 200, `hasViolation: false` |
+| Placa formato antigo | 200, placa `ABC1234` aceita |
+| Via acima de 100 km/h | 200, tolerância percentual |
+| Placa inválida | 400 `INVALID_LICENSE_PLATE` |
+| Header x-origin ausente | 400 `INVALID_ORIGIN` |
+| Captura duplicada | 409 `DUPLICATE_VIOLATION` |
+| Consultar por placa | 200, lista de infrações |
+| Actuator health | 200, `status: UP` |
+
+### Suposições e decisões assumidas
+
+| Tópico | Decisão |
+| ------ | ------- |
+| **Persistência** | PostgreSQL + Flyway em vez de memória (enunciado aceita memória). Justificativa: durabilidade, concorrência real e índices. Ver [decisão técnica](#persistência-postgresql-em-vez-de-memória). |
+| **Duplicata 409** | Não exigido no PDF. Constraint única `(placa, equipamento, captureTimestamp)` evita reprocessamento; reenvio retorna `DUPLICATE_VIOLATION`. |
+| **Tolerância percentual** | Truncamento no **resultado final**: `trunc(measuredSpeed × 0,93)`, não na margem antes de subtrair. Coberto por teste. |
+| **Limite 100 km/h** | Até 100 km/h inclusive → margem em km/h; acima de 100 → margem percentual. |
+| **Fronteiras de gravidade** | 20% → `MEDIUM`; acima de 20% até 50% → `SERIOUS`; acima de 50% → `VERY_SERIOUS`. |
+| **Mensagens de erro** | Em inglês, conforme contrato do PDF (`INVALID_LICENSE_PLATE`, etc.). |
+| **Deploy** | Perfil `prod` + `docker/prod/` para VPS Oracle; URL pública será adicionada nesta seção após o deploy. |
+
+### Instruções especiais
+
+- **Avaliação sem Java:** use apenas Docker (Opção A do guia rápido).
+- **Primeiro build Docker:** pode levar ~3–5 min (cache Maven na imagem).
+- **OpenAPI ao vivo:** com a app rodando, `GET /api-docs` retorna o spec atualizado (mesma base da collection Postman).
 
 ---
 
@@ -307,9 +385,6 @@ Cobertura principal:
 - **Validação** (`LicensePlateValidatorTest`, `EvaluateViolationRequestTest`)
 - **API — slice** (`ViolationControllerTest`) — MockMvc dos endpoints e erros 400
 - **API — integração** (`ViolationApiIntegrationTest`) — fluxo completo `POST /evaluate` → persistência → `GET ?licensePlate=` com Postgres real
-- **API — validação HTTP** (`ViolationApiValidationIntegrationTest`) — 400 de placa, `x-origin` e `captureTimestamp` com stack completa
-- **API — concorrência HTTP** (`ViolationApiConcurrencyIntegrationTest`) — 16 threads via MockMvc: 1× 200 + 15× 409, um único registro (RF4)
-- **Concorrência de serviço** (`ViolationServiceConcurrencyTest`) — mesma captura em paralelo na camada de domínio
 - **Contexto Spring** (`SpeedViolationServiceApplicationTests`) — Testcontainers + Flyway
 
 ### Cobertura (JaCoCo)

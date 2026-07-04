@@ -1,0 +1,238 @@
+{
+  "info": {
+    "_postman_id": "speed-violation-service-collection",
+    "name": "Speed Violation Service",
+    "description": "Collection alinhada ao contrato OpenAPI/Swagger da prova Velsis.\n\n## Como importar\n1. Postman → **Import** → selecione este arquivo\n2. Importe também `local.postman_environment.json`\n3. Ative o environment **Speed Violation — Local**\n4. Suba a stack: `docker compose -f docker/local/compose.yaml up -d --build`\n\n## Fluxo sugerido\n1. *Com infração (exemplo da prova)* → POST /evaluate\n2. *Consultar infrações por placa* → GET /violations\n3. *Sem infração* → POST /evaluate (não persiste)\n4. Cenários de erro 400 e 409",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080"
+    }
+  ],
+  "item": [
+    {
+      "name": "Infrações",
+      "item": [
+        {
+          "name": "Com infração (exemplo da prova)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "x-origin",
+                "value": "{{xOrigin}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"licensePlate\": \"ABC1D23\",\n  \"measuredSpeed\": 92,\n  \"speedLimit\": 60,\n  \"equipmentId\": \"RAD-CWB-001\",\n  \"captureTimestamp\": \"2026-06-08T14:30:00Z\"\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/violations/evaluate",
+            "description": "Esperado: 200, hasViolation true, severity SERIOUS, excessPercentage 41.67"
+          },
+          "response": []
+        },
+        {
+          "name": "Sem infração (dentro da tolerância)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "x-origin",
+                "value": "MOBILE"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"licensePlate\": \"ABC1D23\",\n  \"measuredSpeed\": 64,\n  \"speedLimit\": 60,\n  \"equipmentId\": \"RAD-CWB-001\",\n  \"captureTimestamp\": \"2026-06-08T15:00:00Z\"\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/violations/evaluate",
+            "description": "Esperado: 200, hasViolation false, violation null. Não persiste no banco."
+          },
+          "response": []
+        },
+        {
+          "name": "Placa formato antigo",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "x-origin",
+                "value": "FIXED"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"licensePlate\": \"ABC1234\",\n  \"measuredSpeed\": 72,\n  \"speedLimit\": 60,\n  \"equipmentId\": \"RAD-CWB-002\",\n  \"captureTimestamp\": \"2026-06-08T16:00:00Z\"\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/violations/evaluate",
+            "description": "Placa legado ABC1234 válida."
+          },
+          "response": []
+        },
+        {
+          "name": "Via acima de 100 km/h (tolerância percentual)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "x-origin",
+                "value": "HANDHELD"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"licensePlate\": \"QWE9A87\",\n  \"measuredSpeed\": 120,\n  \"speedLimit\": 110,\n  \"equipmentId\": \"RAD-PRV-010\",\n  \"captureTimestamp\": \"2026-06-08T17:00:00Z\"\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/violations/evaluate",
+            "description": "Tolerância percentual truncada; consideredSpeed 111."
+          },
+          "response": []
+        },
+        {
+          "name": "Placa inválida (400)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "x-origin",
+                "value": "FIXED"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"licensePlate\": \"INVALID\",\n  \"measuredSpeed\": 92,\n  \"speedLimit\": 60,\n  \"equipmentId\": \"RAD-CWB-001\",\n  \"captureTimestamp\": \"2026-06-08T14:30:00Z\"\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/violations/evaluate",
+            "description": "Esperado: 400, error INVALID_LICENSE_PLATE"
+          },
+          "response": []
+        },
+        {
+          "name": "Header x-origin ausente (400)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"licensePlate\": \"ABC1D23\",\n  \"measuredSpeed\": 92,\n  \"speedLimit\": 60,\n  \"equipmentId\": \"RAD-CWB-001\",\n  \"captureTimestamp\": \"2026-06-08T14:30:00Z\"\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/violations/evaluate",
+            "description": "Esperado: 400, error INVALID_ORIGIN"
+          },
+          "response": []
+        },
+        {
+          "name": "Captura duplicada (409)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "x-origin",
+                "value": "FIXED"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"licensePlate\": \"ABC1D23\",\n  \"measuredSpeed\": 92,\n  \"speedLimit\": 60,\n  \"equipmentId\": \"RAD-CWB-001\",\n  \"captureTimestamp\": \"2026-06-08T14:30:00Z\"\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/violations/evaluate",
+            "description": "Execute após *Com infração*. Esperado: 409 DUPLICATE_VIOLATION"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Consulta",
+      "item": [
+        {
+          "name": "Consultar infrações por placa",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/violations?licensePlate={{licensePlate}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "violations"],
+              "query": [
+                {
+                  "key": "licensePlate",
+                  "value": "{{licensePlate}}"
+                }
+              ]
+            },
+            "description": "Lista infrações persistidas. Execute após POST com infração."
+          },
+          "response": []
+        },
+        {
+          "name": "Placa sem registros",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/violations?licensePlate=ZZZ9Z99",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "violations"],
+              "query": [
+                {
+                  "key": "licensePlate",
+                  "value": "ZZZ9Z99"
+                }
+              ]
+            },
+            "description": "Esperado: 200 com array vazio []"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Health",
+      "item": [
+        {
+          "name": "Actuator health",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/actuator/health",
+            "description": "Esperado: {\"status\":\"UP\"}"
+          },
+          "response": []
+        }
+      ]
+    }
+  ]
+}
