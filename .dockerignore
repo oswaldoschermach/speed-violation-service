@@ -1,6 +1,13 @@
 target/
-.mvn/repository/
+.git/
+.gitignore
 .idea/
 *.iml
 .vscode/
 .env
+docker/local/.env
+docker/prod/.env
+*.md
+*.pdf
+scripts/
+.mvn/wrapper/maven-wrapper.jar

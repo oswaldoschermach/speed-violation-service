@@ -1,0 +1,56 @@
+# Stack local: app + PostgreSQL (teste integrado em containers).
+# Uso (na raiz do repositório):
+#   docker compose -f docker/local/compose.yaml up -d --build
+#   docker compose -f docker/local/compose.yaml logs -f app
+
+name: speed-violation-local
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: speed-violation-postgres
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-speed_violation}
+      POSTGRES_USER: ${POSTGRES_USER:-speed_violation}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-speed_violation}
+    ports:
+      - "${POSTGRES_PORT:-5433}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U ${POSTGRES_USER:-speed_violation} -d ${POSTGRES_DB:-speed_violation}",
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  app:
+    build:
+      context: ../..
+      dockerfile: docker/prod/Dockerfile
+    container_name: speed-violation-app
+    environment:
+      SPRING_PROFILES_ACTIVE: local
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: ${POSTGRES_DB:-speed_violation}
+      DB_USERNAME: ${POSTGRES_USER:-speed_violation}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:-speed_violation}
+      SERVER_PORT: 8080
+    ports:
+      - "${SERVER_PORT:-8080}:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8080/actuator/health/readiness"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 90s
+
+volumes:
+  postgres_data:
