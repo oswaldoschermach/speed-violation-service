@@ -1,6 +1,8 @@
 HELP.md
 target/
 .env
+docker/local/.env
+docker/prod/.env
 *.jar
 *.pdf
 .mvn/wrapper/maven-wrapper.jar
