@@ -28,7 +28,7 @@ class ViolationEvaluationServiceTest {
         assertThat(consideredSpeed).isEqualTo(85);
         assertThat(excessPercentage).isEqualByComparingTo(new BigDecimal("41.67"));
         assertThat(service.hasViolation(consideredSpeed, 60)).isTrue();
-        assertThat(service.determineSeverity(excessPercentage)).isEqualTo(ViolationSeverity.SERIOUS);
+        assertThat(ViolationSeverity.fromExcessPercentage(excessPercentage)).isEqualTo(ViolationSeverity.SERIOUS);
     }
 
     @Test
@@ -86,7 +86,7 @@ class ViolationEvaluationServiceTest {
 
         assertThat(consideredSpeed).isEqualTo(120);
         assertThat(excessPercentage).isEqualByComparingTo(new BigDecimal("20.00"));
-        assertThat(service.determineSeverity(excessPercentage)).isEqualTo(ViolationSeverity.MEDIUM);
+        assertThat(ViolationSeverity.fromExcessPercentage(excessPercentage)).isEqualTo(ViolationSeverity.MEDIUM);
     }
 
     @Test
@@ -97,7 +97,7 @@ class ViolationEvaluationServiceTest {
 
         assertThat(consideredSpeed).isEqualTo(121);
         assertThat(excessPercentage).isEqualByComparingTo(new BigDecimal("21.00"));
-        assertThat(service.determineSeverity(excessPercentage)).isEqualTo(ViolationSeverity.SERIOUS);
+        assertThat(ViolationSeverity.fromExcessPercentage(excessPercentage)).isEqualTo(ViolationSeverity.SERIOUS);
     }
 
     @Test
@@ -108,7 +108,7 @@ class ViolationEvaluationServiceTest {
 
         assertThat(consideredSpeed).isEqualTo(150);
         assertThat(excessPercentage).isEqualByComparingTo(new BigDecimal("50.00"));
-        assertThat(service.determineSeverity(excessPercentage)).isEqualTo(ViolationSeverity.SERIOUS);
+        assertThat(ViolationSeverity.fromExcessPercentage(excessPercentage)).isEqualTo(ViolationSeverity.SERIOUS);
     }
 
     @Test
@@ -119,6 +119,6 @@ class ViolationEvaluationServiceTest {
 
         assertThat(consideredSpeed).isEqualTo(151);
         assertThat(excessPercentage).isEqualByComparingTo(new BigDecimal("51.00"));
-        assertThat(service.determineSeverity(excessPercentage)).isEqualTo(ViolationSeverity.VERY_SERIOUS);
+        assertThat(ViolationSeverity.fromExcessPercentage(excessPercentage)).isEqualTo(ViolationSeverity.VERY_SERIOUS);
     }
 }

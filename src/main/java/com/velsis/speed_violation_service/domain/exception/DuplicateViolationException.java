@@ -1,7 +1,10 @@
 package com.velsis.speed_violation_service.domain.exception;
 
+import lombok.Getter;
+
 import java.time.Instant;
 
+@Getter
 public class DuplicateViolationException extends RuntimeException {
 
     private final String licensePlate;
@@ -13,17 +16,5 @@ public class DuplicateViolationException extends RuntimeException {
         this.licensePlate = licensePlate;
         this.equipmentId = equipmentId;
         this.captureTimestamp = captureTimestamp;
-    }
-
-    public String getLicensePlate() {
-        return licensePlate;
-    }
-
-    public String getEquipmentId() {
-        return equipmentId;
-    }
-
-    public Instant getCaptureTimestamp() {
-        return captureTimestamp;
     }
 }

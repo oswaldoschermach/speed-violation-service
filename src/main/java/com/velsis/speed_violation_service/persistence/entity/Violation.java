@@ -14,6 +14,7 @@ import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.NonNull;
 
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -67,30 +68,31 @@ public class Violation {
 
     @Builder
     private Violation(
-            String licensePlate,
-            String equipmentId,
+            @NonNull String licensePlate,
+            @NonNull String equipmentId,
             int measuredSpeed,
             int consideredSpeed,
             int speedLimit,
-            BigDecimal excessPercentage,
-            ViolationSeverity severity,
-            String ctbCode,
-            Instant captureTimestamp,
-            Instant processedAt,
-            CaptureOrigin origin) {
-        this.licensePlate = Objects.requireNonNull(licensePlate);
-        this.equipmentId = Objects.requireNonNull(equipmentId);
+            @NonNull BigDecimal excessPercentage,
+            @NonNull ViolationSeverity severity,
+            @NonNull String ctbCode,
+            @NonNull Instant captureTimestamp,
+            @NonNull Instant processedAt,
+            @NonNull CaptureOrigin origin) {
+        this.licensePlate = licensePlate;
+        this.equipmentId = equipmentId;
         this.measuredSpeed = measuredSpeed;
         this.consideredSpeed = consideredSpeed;
         this.speedLimit = speedLimit;
-        this.excessPercentage = Objects.requireNonNull(excessPercentage);
-        this.severity = Objects.requireNonNull(severity);
-        this.ctbCode = Objects.requireNonNull(ctbCode);
-        this.captureTimestamp = Objects.requireNonNull(captureTimestamp);
-        this.processedAt = Objects.requireNonNull(processedAt);
-        this.origin = Objects.requireNonNull(origin);
+        this.excessPercentage = excessPercentage;
+        this.severity = severity;
+        this.ctbCode = ctbCode;
+        this.captureTimestamp = captureTimestamp;
+        this.processedAt = processedAt;
+        this.origin = origin;
     }
 
+    // equals/hashCode manual (identidade JPA) — ver README § Lombok e equals/hashCode na entidade Violation
     @Override
     public boolean equals(Object other) {
         if (this == other) {

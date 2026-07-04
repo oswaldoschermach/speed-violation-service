@@ -14,4 +14,7 @@ public record ViolationResponse(
         @Schema(description = "Código do CTB correspondente à gravidade.", example = "218-II")
         String ctbCode
 ) {
+    public static ViolationResponse of(ViolationSeverity severity) {
+        return new ViolationResponse(severity, severity.getCtbCode());
+    }
 }
