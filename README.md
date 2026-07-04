@@ -385,6 +385,9 @@ Cobertura principal:
 - **Validação** (`LicensePlateValidatorTest`, `EvaluateViolationRequestTest`)
 - **API — slice** (`ViolationControllerTest`) — MockMvc dos endpoints e erros 400
 - **API — integração** (`ViolationApiIntegrationTest`) — fluxo completo `POST /evaluate` → persistência → `GET ?licensePlate=` com Postgres real
+- **API — validação HTTP** (`ViolationApiValidationIntegrationTest`) — 400 de placa, `x-origin` e `captureTimestamp` com stack completa
+- **API — concorrência HTTP** (`ViolationApiConcurrencyIntegrationTest`) — 16 threads via MockMvc: 1× 200 + 15× 409, um único registro (RF4)
+- **Concorrência de serviço** (`ViolationServiceConcurrencyTest`) — mesma captura em paralelo na camada de domínio
 - **Contexto Spring** (`SpeedViolationServiceApplicationTests`) — Testcontainers + Flyway
 
 ### Cobertura (JaCoCo)
