@@ -1,0 +1,29 @@
+# Perfil local: desenvolvimento na máquina ou stack docker/local.
+spring:
+  datasource:
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5433}/${DB_NAME:speed_violation}
+    username: ${DB_USERNAME:speed_violation}
+    password: ${DB_PASSWORD:speed_violation}
+
+logging:
+  level:
+    com.velsis.speed_violation_service: DEBUG
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: when_authorized
+      probes:
+        enabled: true
+  health:
+    livenessState:
+      enabled: true
+    readinessState:
+      enabled: true
+
+springdoc:
+  show-actuator: true
