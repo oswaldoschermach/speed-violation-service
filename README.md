@@ -2,6 +2,8 @@
 
 Microserviço REST para apuração de infrações por excesso de velocidade (prova prática Velsis).
 
+> **Avaliador / recrutador:** comece pelo [Guia rápido](#guia-rápido-recrutador). Um comando sobe app + banco; teste via Swagger, Postman ou curl.
+
 ## Tecnologias
 
 - Java 21
@@ -12,22 +14,168 @@ Microserviço REST para apuração de infrações por excesso de velocidade (pro
 
 ## Pré-requisitos
 
+**Opção A (Docker — recomendada para avaliação):**
+
+- Docker e Docker Compose
+
+**Opção B (JVM local) ou desenvolvimento:**
+
 - Java 21
-- Docker (para PostgreSQL local)
+- Docker e Docker Compose (apenas para o Postgres)
 - Maven Wrapper incluído (`./mvnw`)
 
-## Execução local
+## Perfis Spring
+
+| Perfil | Uso | Arquivo |
+| ------ | --- | ------- |
+| `local` (padrão) | Desenvolvimento na máquina ou stack `docker/local` | `application-local.yml` |
+| `prod` | Deploy remoto (PaaS ou `docker/prod`) | `application-prod.yml` |
+| `test` | Testes automatizados | `application-test.yml` |
+
+O perfil ativo é definido por `SPRING_PROFILES_ACTIVE` (padrão: `local`).
+
+## Guia rápido (recrutador)
+
+**Pré-requisito:** Docker e Docker Compose instalados. Java **não** é necessário se usar a Opção A.
+
+### 1. Subir tudo com um comando
+
+Na raiz do repositório:
 
 ```bash
-# 1. Subir o banco
-docker compose up -d
+docker compose -f docker/local/compose.yaml up -d --build
+```
 
-# 2. Rodar a aplicação (Java 21)
-./mvnw spring-boot:run
+Na primeira execução o build pode levar alguns minutos (download de dependências Maven). Nas seguintes, sobe em segundos.
+
+Aguarde a aplicação ficar pronta (cerca de 1–2 min na primeira vez):
+
+```bash
+# Repita até retornar {"status":"UP"} ou status 200
+curl -s http://localhost:8080/actuator/health
+```
+
+Verificar containers:
+
+```bash
+docker ps --filter name=speed-violation
+```
+
+Esperado: `speed-violation-postgres` e `speed-violation-app` com status `healthy` (ou `Up`).
+
+### 2. Testar a API
+
+| Recurso | URL |
+| ------- | --- |
+| Swagger UI (recomendado) | http://localhost:8080/swagger-ui.html |
+| Health check | http://localhost:8080/actuator/health |
+| OpenAPI JSON | http://localhost:8080/api-docs |
+
+**Teste mínimo via curl**
+
+```bash
+curl -s -X POST http://localhost:8080/api/v1/violations/evaluate \
+  -H "Content-Type: application/json" \
+  -H "x-origin: FIXED" \
+  -d '{
+    "licensePlate": "ABC1D23",
+    "measuredSpeed": 92,
+    "speedLimit": 60,
+    "equipmentId": "RAD-CWB-001",
+    "captureTimestamp": "2026-06-08T14:30:00Z"
+  }'
+```
+
+Consultar infrações da mesma placa:
+
+```bash
+curl -s "http://localhost:8080/api/v1/violations?licensePlate=ABC1D23"
+```
+
+### 3. Smoke test automatizado (50 casos)
+
+Com a stack no ar e `curl` + `jq` instalados:
+
+```bash
+./scripts/smoke-test-50.sh
+```
+
+O script valida cenários de infração, sem infração, validações 400, duplicata 409 e consulta por placa.
+
+### 4. Parar e limpar
+
+```bash
+docker compose -f docker/local/compose.yaml down
+```
+
+Para remover também o volume do banco (dados apagados):
+
+```bash
+docker compose -f docker/local/compose.yaml down -v
+```
+
+### Problemas comuns
+
+**Conflito de nome do container Postgres** (se você já rodou uma versão anterior do projeto):
+
+```bash
+docker rm -f speed-violation-postgres
+docker compose -f docker/local/compose.yaml up -d --build
+```
+
+**Porta 8080 ou 5433 já em uso:** copie e edite as variáveis de porta:
+
+```bash
+cp docker/local/.env.example docker/local/.env
+# Ajuste SERVER_PORT e/ou POSTGRES_PORT em docker/local/.env
+docker compose -f docker/local/compose.yaml --env-file docker/local/.env up -d --build
+```
+
+---
+
+## Execução local (detalhes)
+
+### Opção A — Stack completa em Docker (recomendado para demo)
+
+Equivalente ao [guia rápido](#guia-rápido-recrutador) acima:
+
+```bash
+docker compose -f docker/local/compose.yaml up -d --build
 ```
 
 API: `http://localhost:8080`  
-Swagger UI: `http://localhost:8080/swagger-ui.html`  
+Health: `http://localhost:8080/actuator/health`  
+Swagger UI: `http://localhost:8080/swagger-ui.html`
+
+Parar: `docker compose -f docker/local/compose.yaml down`
+
+### Opção B — App na JVM + Postgres em Docker
+
+Requer Java 21 instalado.
+
+```bash
+# 1. Só o banco (perfil local)
+docker compose -f docker/local/compose.yaml up -d postgres
+
+# 2. Aplicação (perfil local é o padrão)
+./mvnw spring-boot:run
+```
+
+### Estrutura Docker
+
+```
+docker/
+├── local/
+│   ├── compose.yaml      # app + Postgres para desenvolvimento
+│   └── .env.example
+└── prod/
+    ├── Dockerfile        # imagem de produção (usada também no build local)
+    ├── compose.yaml      # stack self-hosted (VPS)
+    └── .env.example
+```
+
+**Deploy remoto (Railway, Render, Fly.io):** aponte o build para `docker/prod/Dockerfile`, defina `SPRING_PROFILES_ACTIVE=prod` e as variáveis `DB_*` do Postgres gerenciado (ver `docker/prod/.env.example`).
+
 OpenAPI JSON: `http://localhost:8080/api-docs`
 
 ### Swagger / OpenAPI (teste interativo)
@@ -159,6 +307,9 @@ Cobertura principal:
 - **Validação** (`LicensePlateValidatorTest`, `EvaluateViolationRequestTest`)
 - **API — slice** (`ViolationControllerTest`) — MockMvc dos endpoints e erros 400
 - **API — integração** (`ViolationApiIntegrationTest`) — fluxo completo `POST /evaluate` → persistência → `GET ?licensePlate=` com Postgres real
+- **API — validação HTTP** (`ViolationApiValidationIntegrationTest`) — 400 de placa, `x-origin` e `captureTimestamp` com stack completa
+- **API — concorrência HTTP** (`ViolationApiConcurrencyIntegrationTest`) — 16 threads via MockMvc: 1× 200 + 15× 409, um único registro (RF4)
+- **Concorrência de serviço** (`ViolationServiceConcurrencyTest`) — mesma captura em paralelo na camada de domínio
 - **Contexto Spring** (`SpeedViolationServiceApplicationTests`) — Testcontainers + Flyway
 
 ### Cobertura (JaCoCo)
@@ -209,7 +360,7 @@ O enunciado aceita armazenamento **em memória**. Optamos por **PostgreSQL + Fly
 - Índices por `license_plate` (e `license_plate, processed_at`) tornam a consulta por placa eficiente mesmo com volume
 - Constraint única `(license_plate, equipment_id, capture_timestamp)` impede duplicatas; reenvios retornam **409** (`DUPLICATE_VIOLATION`)
 
-**Trade-off assumido:** rodar/hospedar exige um Postgres disponível (via `docker compose`). Para o escopo desta prova consideramos que a robustez de persistência e concorrência compensa a dependência extra. Uma estrutura em memória (`ConcurrentHashMap`) seria suficiente e removeria a dependência, ao custo de perder durabilidade.
+**Trade-off assumido:** rodar/hospedar exige um Postgres disponível (via `docker/local` ou banco gerenciado no deploy). Para o escopo desta prova consideramos que a robustez de persistência e concorrência compensa a dependência extra. Uma estrutura em memória (`ConcurrentHashMap`) seria suficiente e removeria a dependência, ao custo de perder durabilidade.
 
 A API exposta (`POST /evaluate`, `GET ?licensePlate=`) permanece igual ao contrato da prova.
 
@@ -224,6 +375,21 @@ A tabela `violations` usa `UUID` como chave primária (`gen_random_uuid()` no Po
 - **API:** o contrato da prova **não expõe** o `id` na resposta; consulta principal é por `license_plate`
 
 **Alternativa considerada:** `Long` com `BIGSERIAL` seria mais simples para escopo isolado.
+
+### Lombok e `equals`/`hashCode` na entidade `Violation`
+
+O projeto usa Lombok de forma consistente na camada de aplicação (`@RequiredArgsConstructor`, `@Slf4j`, `@Getter` em exceções) e na entidade JPA (`@Getter`, `@Builder`, `@NonNull` no construtor do builder). **`equals` e `hashCode` de `Violation` permanecem manuais.**
+
+**Por quê?**
+
+Entidades JPA com `@GeneratedValue` costumam existir **sem `id`** antes do `save` (estado transient). O padrão idiomático de igualdade por identidade persistida é:
+
+- **`equals`:** só retorna `true` quando `id != null` e os IDs coincidem (referência `==` continua valendo)
+- **`hashCode`:** constante por classe (`getClass().hashCode()`), estável enquanto `id` ainda é `null`
+
+O `@EqualsAndHashCode(onlyExplicitlyIncluded = true)` do Lombok, restrito ao campo `id`, trataria **duas instâncias distintas com `id == null` como iguais**. Isso não afeta o fluxo atual (`Violation` é construída e persistida diretamente, sem entrar em `Set`/`Map` antes do save), mas pode causar deduplicação incorreta se alguém no futuro agrupar entidades transientes em coleções com igualdade.
+
+**Decisão:** manter o par manual documenta a intenção JPA e blinda esse edge case com custo mínimo (~15 linhas). O restante do boilerplate continua delegado ao Lombok ou a records (DTOs, commands, config).
 
 ### Schema via Flyway (não via JPA)
 
