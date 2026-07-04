@@ -52,6 +52,12 @@
 			<artifactId>flyway-database-postgresql</artifactId>
 		</dependency>
 
+		<!-- Health checks para deploy e Docker prod -->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-actuator</artifactId>
+		</dependency>
+
 		<!-- Documentação OpenAPI/Swagger (diferencial da prova) -->
 		<dependency>
 			<groupId>org.springdoc</groupId>
