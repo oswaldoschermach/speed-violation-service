@@ -1,4 +1,4 @@
-name: speed-violation-local
+version: "3.8"
 
 services:
   postgres:

@@ -93,6 +93,8 @@ nano docker/prod/.env
 Defina no mínimo:
 
 ```env
+POSTGRES_DB=speed_violation
+POSTGRES_USER=speed_violation
 POSTGRES_PASSWORD=<senha_forte_aqui>
 APP_DOMAIN=speed-violation.nebulax.com.br
 LETSENCRYPT_EMAIL=voce@nebulax.com.br
@@ -100,6 +102,15 @@ APP_IMAGE=ghcr.io/oswaldoschermach/speed-violation-service:latest
 ```
 
 ## Passo 5 — Subir a stack (pull da imagem)
+
+No VPS use `docker-compose` (v1, com hífen) ou `docker compose` (plugin v2), conforme instalado:
+
+```bash
+docker-compose -f docker/prod/compose.yaml --env-file docker/prod/.env pull
+docker-compose -f docker/prod/compose.yaml --env-file docker/prod/.env up -d
+```
+
+Equivalente com plugin v2:
 
 ```bash
 docker compose -f docker/prod/compose.yaml --env-file docker/prod/.env pull

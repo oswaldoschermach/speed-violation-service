@@ -91,6 +91,11 @@ jobs:
             set -euo pipefail
             cd "${{ vars.DEPLOY_PATH }}"
             git pull --ff-only
-            docker compose -f docker/prod/compose.yaml --env-file docker/prod/.env pull
-            docker compose -f docker/prod/compose.yaml --env-file docker/prod/.env up -d --remove-orphans
+            if docker compose version >/dev/null 2>&1; then
+              DC="docker compose"
+            else
+              DC="docker-compose"
+            fi
+            $DC -f docker/prod/compose.yaml --env-file docker/prod/.env pull
+            $DC -f docker/prod/compose.yaml --env-file docker/prod/.env up -d --remove-orphans
             docker image prune -f

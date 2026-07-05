@@ -1,4 +1,4 @@
-name: speed-violation-prod
+version: "3.8"
 
 services:
   postgres:
@@ -6,13 +6,13 @@ services:
     container_name: speed-violation-postgres-prod
     restart: unless-stopped
     environment:
-      POSTGRES_DB: ${POSTGRES_DB}
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-speed_violation}
+      POSTGRES_USER: ${POSTGRES_USER:-speed_violation}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in docker/prod/.env}
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-speed_violation} -d ${POSTGRES_DB:-speed_violation}"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -28,11 +28,11 @@ services:
       SPRING_PROFILES_ACTIVE: prod
       DB_HOST: postgres
       DB_PORT: 5432
-      DB_NAME: ${POSTGRES_DB}
-      DB_USERNAME: ${POSTGRES_USER}
-      DB_PASSWORD: ${POSTGRES_PASSWORD}
+      DB_NAME: ${POSTGRES_DB:-speed_violation}
+      DB_USERNAME: ${POSTGRES_USER:-speed_violation}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in docker/prod/.env}
       SERVER_PORT: 8080
-      JAVA_TOOL_OPTIONS: ${JAVA_TOOL_OPTIONS:--XX:MaxRAMPercentage=75.0}
+      JAVA_TOOL_OPTIONS: ${JAVA_TOOL_OPTIONS}
     ports:
       - "127.0.0.1:${SERVER_PORT:-8080}:8080"
     depends_on:
@@ -50,8 +50,8 @@ services:
     container_name: speed-violation-caddy-prod
     restart: unless-stopped
     environment:
-      APP_DOMAIN: ${APP_DOMAIN}
-      LETSENCRYPT_EMAIL: ${LETSENCRYPT_EMAIL}
+      APP_DOMAIN: ${APP_DOMAIN:?Set APP_DOMAIN in docker/prod/.env}
+      LETSENCRYPT_EMAIL: ${LETSENCRYPT_EMAIL:?Set LETSENCRYPT_EMAIL in docker/prod/.env}
     ports:
       - "80:80"
       - "443:443"
