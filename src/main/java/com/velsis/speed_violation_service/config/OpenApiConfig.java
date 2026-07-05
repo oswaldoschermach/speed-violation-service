@@ -23,7 +23,7 @@ public class OpenApiConfig {
     OpenAPI speedViolationOpenApi() {
         return new OpenAPI()
                 .info(new Info()
-                        .title("Speed Violation Service API TESTESTESTESTESTESTE")
+                        .title("Speed Violation Service API")
                         .version("1.0.0")
                         .description("""
                                 Microserviço REST para apuração de infrações por **excesso de velocidade** \
