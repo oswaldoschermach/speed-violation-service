@@ -1,0 +1,39 @@
+version: "3.8"
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: speed-violation-postgres-ci
+    environment:
+      POSTGRES_DB: speed_violation
+      POSTGRES_USER: speed_violation
+      POSTGRES_PASSWORD: ci_password
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U speed_violation -d speed_violation"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+
+  app:
+    image: ${APP_IMAGE:-speed-violation-service:ci}
+    container_name: speed-violation-app-ci
+    restart: "no"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: speed_violation
+      DB_USERNAME: speed_violation
+      DB_PASSWORD: ci_password
+      SERVER_PORT: 8080
+    ports:
+      - "8080:8080"
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8080/actuator/health/readiness"]
+      interval: 10s
+      timeout: 5s
+      retries: 18
+      start_period: 90s

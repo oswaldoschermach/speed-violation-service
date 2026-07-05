@@ -15,7 +15,7 @@ Microserviço REST para apuração de infrações por excesso de velocidade (pro
 - Springdoc OpenAPI (Swagger)
 - Collection Postman (`docs/postman/`)
 - Docker (multi-stage) + Caddy (HTTPS automático) para deploy
-- GitHub Actions (CI: `mvnw verify` + build/push GHCR + deploy automático SSH na `main`)
+- GitHub Actions (pipeline CI/CD: testes, Sonar, Trivy, Docker, deploy simulado — ver [docs/CI-CD.md](docs/CI-CD.md))
 
 ## Pré-requisitos
 
@@ -170,7 +170,7 @@ Informações para avaliação da prova prática Velsis.
 | ----------------------- | ------ | ---------- |
 | RF1–RF4 (API, validações, persistência, consulta) | Concluído | Coberto por testes unitários, slice e integração |
 | README com instruções de execução | Concluído | [Guia rápido](#guia-rápido-recrutador) + Postman |
-| CI (`mvnw verify` no GitHub Actions) | Concluído | Job `test` em todo push/PR na `main` |
+| CI (`mvnw verify` no GitHub Actions) | Concluído | Pipeline completo em [docs/CI-CD.md](docs/CI-CD.md) |
 | Aplicação hospedada com domínio e HTTPS | Concluído | Caddy + Let's Encrypt; DNS `speed-violation-api.nebulax.com.br` |
 | Deploy automático (push na `main`) | Concluído | Build GHCR + SSH no VPS ([docs/DEPLOY.md](docs/DEPLOY.md)) |
 | Collection Postman | Concluído | `docs/postman/` (ambiente local; ver opcionais abaixo) |
@@ -409,15 +409,26 @@ Retorna lista de infrações persistidas para a placa (vazia se não houver).
 
 ## Testes
 
+Guia completo do pipeline: **[docs/CI-CD.md](docs/CI-CD.md)**
+
 ```bash
-# Testes rápidos (unitários + slice de web)
+# Só testes unitários (rápido)
 ./mvnw test
 
-# Suite completa + relatório e enforcement de cobertura (JaCoCo)
+# Só smoke tests (Maven + Testcontainers)
+./mvnw test -Dgroups=smoke -DexcludedGroups=
+
+# Só integração + gate JaCoCo (80% domain.service)
+./mvnw verify -DskipTests
+
+# Suite completa local
 ./mvnw verify
+
+# Smoke HTTP (app rodando em container ou local)
+BASE_URL=http://localhost:8080 ./scripts/smoke-test-ci.sh
 ```
 
-> Os testes de integração e o `verify` usam Testcontainers e exigem Docker em execução.
+> Integração, smoke e `verify` usam Testcontainers — exige Docker em execução.
 
 Cobertura principal:
 
@@ -425,11 +436,11 @@ Cobertura principal:
 - **Orquestração** (`ViolationServiceTest`) — persistência condicional e montagem da resposta
 - **Validação** (`LicensePlateValidatorTest`, `EvaluateViolationRequestTest`)
 - **API — slice** (`ViolationControllerTest`) — MockMvc dos endpoints e erros 400
+- **Smoke** (`ApplicationSmokeTest`) — contexto, health e fluxo feliz mínimo
 - **API — integração** (`ViolationApiIntegrationTest`) — fluxo completo `POST /evaluate` → persistência → `GET ?licensePlate=` com Postgres real
 - **API — validação HTTP** (`ViolationApiValidationIntegrationTest`) — 400 de placa, `x-origin` e `captureTimestamp` com stack completa
 - **API — concorrência HTTP** (`ViolationApiConcurrencyIntegrationTest`) — 16 threads via MockMvc: 1× 200 + 15× 409, um único registro (RF4)
 - **Concorrência de serviço** (`ViolationServiceConcurrencyTest`) — mesma captura em paralelo na camada de domínio
-- **Contexto Spring** (`SpeedViolationServiceApplicationTests`) — Testcontainers + Flyway
 
 ### Cobertura (JaCoCo)
 

@@ -10,15 +10,17 @@ Actions** e publicada no **GHCR**; o VPS apenas **puxa a imagem e sobe a stack**
 ## Como funciona (CI/CD)
 
 ```
-push na main ─► GitHub Actions ─► mvnw verify (testes) ─► build imagem ─► push GHCR
-                                                                              │
-                       VPS ◄── docker compose pull + up -d ───────────────────┘
+push main/develop ─► CI/CD Pipeline (ci.yml)
+                         build → unit → smoke → integration → Sonar/Trivy
+                         → Docker → deploy simulado → publish GHCR
+                                    │
+                       VPS ◄────────┘  (deploy-production.yml, se DEPLOY_ENABLED=true)
 ```
 
-- **CI** (`.github/workflows/ci.yml`): roda `./mvnw verify` em todo push/PR na `main`.
-- **CD**: em push na `main` (ou tag `v*`), builda a imagem e publica em
-  `ghcr.io/oswaldoschermach/speed-violation-service`.
-- **VPS**: só precisa de `docker/prod/compose.yaml`, `docker/prod/Caddyfile` e um `.env`.
+- **CI/CD** ([`.github/workflows/ci.yml`](../.github/workflows/ci.yml)): pipeline completo — ver [CI-CD.md](CI-CD.md).
+- **CD (imagem):** publicação no GHCR só após todos os gates passarem.
+- **Deploy VPS** ([`deploy-production.yml`](../.github/workflows/deploy-production.yml)): workflow separado; roda após CI bem-sucedido na `main` quando `DEPLOY_ENABLED=true`.
+- **VPS**: `docker/prod/compose.yaml`, `Caddyfile` e `.env`.
 
 ## Arquitetura em produção
 

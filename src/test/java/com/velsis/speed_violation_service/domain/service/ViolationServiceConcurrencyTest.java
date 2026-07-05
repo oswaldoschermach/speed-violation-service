@@ -4,8 +4,10 @@ import com.velsis.speed_violation_service.domain.exception.DuplicateViolationExc
 import com.velsis.speed_violation_service.domain.model.CaptureOrigin;
 import com.velsis.speed_violation_service.domain.model.EvaluateViolationCommand;
 import com.velsis.speed_violation_service.persistence.repository.ViolationRepository;
+import com.velsis.speed_violation_service.support.TestTags;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -23,6 +25,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+@Tag(TestTags.INTEGRATION)
 @SpringBootTest
 @Testcontainers
 class ViolationServiceConcurrencyTest {

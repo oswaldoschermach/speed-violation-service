@@ -1,8 +1,10 @@
 package com.velsis.speed_violation_service.api;
 
 import com.velsis.speed_violation_service.persistence.repository.ViolationRepository;
+import com.velsis.speed_violation_service.support.TestTags;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -24,6 +26,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 
+@Tag(TestTags.INTEGRATION)
 @SpringBootTest
 @AutoConfigureMockMvc
 @Testcontainers

@@ -1,8 +1,5 @@
 package com.velsis.speed_violation_service.config;
 
-/**
- * Exemplos reutilizados na documentação OpenAPI/Swagger (contrato da prova Velsis).
- */
 public final class OpenApiExamples {
 
     private OpenApiExamples() {
