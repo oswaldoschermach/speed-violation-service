@@ -98,8 +98,26 @@ jobs:
             fi
             COMPOSE="-f docker/prod/compose.yaml --env-file docker/prod/.env"
             # docker-compose v1 bug: "Recreating" after pull → KeyError ContainerConfig.
-            # Pull/replace only app; postgres/caddy stay running (volumes + TLS certs preserved).
+            # Pull/replace only app; ensure postgres/caddy are up (first failed deploy may have stopped postgres).
+            if ! docker inspect -f '{{.State.Running}}' speed-violation-postgres-prod 2>/dev/null | grep -q true; then
+              docker ps -aq --filter "name=speed-violation-postgres" | xargs -r docker rm -f
+              $DC $COMPOSE up -d postgres
+              for i in $(seq 1 30); do
+                if docker inspect -f '{{.State.Health.Status}}' speed-violation-postgres-prod 2>/dev/null | grep -q healthy; then
+                  break
+                fi
+                sleep 2
+              done
+            fi
+            $DC $COMPOSE up -d --no-recreate caddy 2>/dev/null || $DC $COMPOSE up -d caddy
             $DC $COMPOSE pull app
             docker rm -f speed-violation-app-prod 2>/dev/null || true
             $DC $COMPOSE up -d --no-deps app
+            for i in $(seq 1 45); do
+              if docker inspect -f '{{.State.Health.Status}}' speed-violation-app-prod 2>/dev/null | grep -q healthy; then
+                break
+              fi
+              sleep 2
+            done
+            curl -fsS http://127.0.0.1:8080/actuator/health/readiness
             docker image prune -f
