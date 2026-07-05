@@ -32,3 +32,7 @@ management:
 
 springdoc:
   show-actuator: false
+
+speed-violation:
+  openapi:
+    public-url: ${APP_PUBLIC_URL:}

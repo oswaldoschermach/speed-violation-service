@@ -32,6 +32,7 @@ services:
       DB_USERNAME: ${POSTGRES_USER:-speed_violation}
       DB_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in docker/prod/.env}
       SERVER_PORT: 8080
+      APP_PUBLIC_URL: https://${APP_DOMAIN:?Set APP_DOMAIN in docker/prod/.env}
       JAVA_TOOL_OPTIONS: ${JAVA_TOOL_OPTIONS}
     ports:
       - "127.0.0.1:${SERVER_PORT:-8080}:8080"

@@ -10,7 +10,10 @@ import io.swagger.v3.oas.models.tags.Tag;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.env.Environment;
 
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 @Configuration
@@ -18,6 +21,15 @@ public class OpenApiConfig {
 
     @Value("${server.port:8080}")
     private int serverPort;
+
+    @Value("${speed-violation.openapi.public-url:}")
+    private String publicUrl;
+
+    private final Environment environment;
+
+    OpenApiConfig(Environment environment) {
+        this.environment = environment;
+    }
 
     @Bean
     OpenAPI speedViolationOpenApi() {
@@ -53,13 +65,7 @@ public class OpenApiConfig {
                                 .url("https://github.com/oswaldoschermach/speed-violation-service"))
                         .license(new License()
                                 .name("Uso educacional / prova técnica")))
-                .servers(List.of(
-                        new Server()
-                                .url("http://localhost:" + serverPort)
-                                .description("Ambiente local"),
-                        new Server()
-                                .url("/")
-                                .description("Servidor atual (relativo)")))
+                .servers(openApiServers())
                 .tags(List.of(
                         new Tag()
                                 .name("Infrações")
@@ -67,5 +73,22 @@ public class OpenApiConfig {
                                         Apuração de leituras de velocidade e consulta de infrações \
                                         registradas por placa.""")))
                 .components(new Components());
+    }
+
+    private List<Server> openApiServers() {
+        var servers = new ArrayList<Server>();
+        servers.add(new Server().url("/").description("Servidor atual (mesma origem)"));
+
+        if (publicUrl != null && !publicUrl.isBlank()) {
+            servers.add(new Server().url(publicUrl.strip()).description("URL pública"));
+        }
+
+        if (!Arrays.asList(environment.getActiveProfiles()).contains("prod")) {
+            servers.add(new Server()
+                    .url("http://localhost:" + serverPort)
+                    .description("Ambiente local"));
+        }
+
+        return servers;
     }
 }
