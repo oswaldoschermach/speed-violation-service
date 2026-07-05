@@ -1,4 +1,3 @@
-# Perfil prod: deploy remoto (Railway, Render, VPS). Credenciais via variáveis de ambiente.
 spring:
   datasource:
     url: jdbc:postgresql://${DB_HOST}:${DB_PORT:5432}/${DB_NAME}
@@ -6,6 +5,9 @@ spring:
     password: ${DB_PASSWORD}
     hikari:
       maximum-pool-size: ${DB_POOL_SIZE:10}
+
+server:
+  forward-headers-strategy: framework
 
 logging:
   level:

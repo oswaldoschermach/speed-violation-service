@@ -1,5 +1,7 @@
 # speed-violation-service
 
+[![CI](https://github.com/oswaldoschermach/speed-violation-service/actions/workflows/ci.yml/badge.svg)](https://github.com/oswaldoschermach/speed-violation-service/actions/workflows/ci.yml)
+
 Microserviço REST para apuração de infrações por excesso de velocidade (prova prática Velsis).
 
 > **Avaliador / recrutador:** comece pelo [Guia rápido](#guia-rápido-recrutador) ou pela seção [Entrega](#entrega). Um comando sobe app + banco; teste via Swagger, Postman ou curl.
@@ -12,6 +14,8 @@ Microserviço REST para apuração de infrações por excesso de velocidade (pro
 - Maven
 - Springdoc OpenAPI (Swagger)
 - Collection Postman (`docs/postman/`)
+- Docker (multi-stage) + Caddy (HTTPS automático) para deploy
+- GitHub Actions (CI: `mvnw verify` + build/push de imagem para GHCR)
 
 ## Pré-requisitos
 
@@ -152,7 +156,7 @@ Informações para avaliação da prova prática Velsis.
 | Item | URL |
 | ---- | --- |
 | Repositório Git (público) | https://github.com/oswaldoschermach/speed-violation-service |
-| API hospedada | _Pendente — deploy previsto em VPS Oracle Cloud_ |
+| API hospedada | _Pendente — deploy em VPS com domínio próprio e HTTPS (ver [docs/DEPLOY.md](docs/DEPLOY.md))_ |
 | Swagger (local) | http://localhost:8080/swagger-ui.html |
 
 > Quando a API estiver no ar, atualize a linha **API hospedada** com a URL pública (ex.: `http://<IP>:8080` ou domínio com HTTPS).
@@ -201,7 +205,7 @@ Cenários incluídos (alinhados ao Swagger):
 | **Limite 100 km/h** | Até 100 km/h inclusive → margem em km/h; acima de 100 → margem percentual. |
 | **Fronteiras de gravidade** | 20% → `MEDIUM`; acima de 20% até 50% → `SERIOUS`; acima de 50% → `VERY_SERIOUS`. |
 | **Mensagens de erro** | Em inglês, conforme contrato do PDF (`INVALID_LICENSE_PLATE`, etc.). |
-| **Deploy** | Perfil `prod` + `docker/prod/` para VPS Oracle; URL pública será adicionada nesta seção após o deploy. |
+| **Deploy** | Perfil `prod` + `docker/prod/` (app + Postgres + Caddy com HTTPS automático) para VPS com domínio próprio; runbook em [docs/DEPLOY.md](docs/DEPLOY.md). URL pública será adicionada nesta seção após o deploy. |
 
 ### Instruções especiais
 
@@ -248,11 +252,19 @@ docker/
 │   └── .env.example
 └── prod/
     ├── Dockerfile        # imagem de produção (usada também no build local)
-    ├── compose.yaml      # stack self-hosted (VPS)
+    ├── compose.yaml      # stack self-hosted: app + Postgres + Caddy (HTTPS)
+    ├── Caddyfile         # reverse proxy + TLS automático (Let's Encrypt)
     └── .env.example
 ```
 
-**Deploy remoto (Railway, Render, Fly.io):** aponte o build para `docker/prod/Dockerfile`, defina `SPRING_PROFILES_ACTIVE=prod` e as variáveis `DB_*` do Postgres gerenciado (ver `docker/prod/.env.example`).
+**Deploy em VPS com domínio (HTTPS automático):** a stack `docker/prod` inclui um reverse proxy **Caddy** que obtém e renova certificados Let's Encrypt automaticamente. Passo a passo completo (DNS, firewall, verificação) em **[docs/DEPLOY.md](docs/DEPLOY.md)**. Resumo:
+
+```bash
+cp docker/prod/.env.example docker/prod/.env   # defina senha, APP_DOMAIN e LETSENCRYPT_EMAIL
+docker compose -f docker/prod/compose.yaml --env-file docker/prod/.env up -d --build
+```
+
+**Deploy remoto (Railway, Render, Fly.io):** aponte o build para `docker/prod/Dockerfile`, defina `SPRING_PROFILES_ACTIVE=prod` e as variáveis `DB_*` do Postgres gerenciado (ver `docker/prod/.env.example`). Nesse caso o HTTPS fica a cargo da plataforma (não use o `compose.yaml`/Caddy).
 
 OpenAPI JSON: `http://localhost:8080/api-docs`
 

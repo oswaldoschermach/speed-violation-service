@@ -1,8 +1,4 @@
 #!/usr/bin/env bash
-# Smoke test completo: 50 casos contra a API em execução local.
-# Uso: ./scripts/smoke-test-50.sh
-# Pré-requisitos: stack local em docker/local, curl, jq
-#   docker compose -f docker/local/compose.yaml up -d --build
 
 set -uo pipefail
 
@@ -49,7 +45,6 @@ truncate_db() {
   fi
 }
 
-# ts_offset: segundos únicos por caso para evitar colisão acidental
 ts_for_case() {
   printf '2026-06-08T14:%02d:%02dZ' $((30 + CASE / 60)) $((CASE % 60))
 }
@@ -106,7 +101,6 @@ post_evaluate_no_origin() {
 }
 
 post_evaluate_raw() {
-  # args: headers... -- body
   local headers=()
   while [[ $# -gt 0 && "$1" != "--" ]]; do
     headers+=("$1")
@@ -147,8 +141,6 @@ main() {
   echo
 
   local ts
-
-  # --- POST /evaluate — sucesso (1-15) ---
 
   ts=$(ts_for_case)
   post_evaluate FIXED "{\"licensePlate\":\"ABC1D23\",\"measuredSpeed\":92,\"speedLimit\":60,\"equipmentId\":\"RAD-CWB-001\",\"captureTimestamp\":\"${ts}\"}"
@@ -210,8 +202,6 @@ main() {
   post_evaluate HANDHELD "{\"licensePlate\":\"STU6V78\",\"measuredSpeed\":1,\"speedLimit\":1,\"equipmentId\":\"RAD-MIN-001\",\"captureTimestamp\":\"${ts}\"}"
   assert_case "Velocidades mínimas válidas (1/1) — sem infração após tolerância" 200 '.hasViolation == false'
 
-  # --- POST /evaluate — erros (16-30) ---
-
   ts=$(ts_for_case)
   post_evaluate FIXED "{\"licensePlate\":\"INVALID\",\"measuredSpeed\":92,\"speedLimit\":60,\"equipmentId\":\"RAD-CWB-001\",\"captureTimestamp\":\"${ts}\"}"
   assert_case "Placa inválida → 400 INVALID_LICENSE_PLATE" 400 '.error == "INVALID_LICENSE_PLATE"'
@@ -252,7 +242,6 @@ main() {
   post_evaluate FIXED "{\"licensePlate\":\"ABC1D23\",\"measuredSpeed\":80,\"speedLimit\":60,\"equipmentId\":\"RAD-CWB-001\",\"captureTimestamp\":\"not-a-date\"}"
   assert_case "Timestamp malformado → 400" 400 '.error == "INVALID_CAPTURE_TIMESTAMP"'
 
-  # Duplicata: reutiliza corpo do caso #1 (ABC1D23, RAD-CWB-001, mesmo ts do primeiro caso)
   post_evaluate FIXED "{\"licensePlate\":\"ABC1D23\",\"measuredSpeed\":92,\"speedLimit\":60,\"equipmentId\":\"RAD-CWB-001\",\"captureTimestamp\":\"2026-06-08T14:30:00Z\"}"
   assert_case "Captura duplicada → 409 DUPLICATE_VIOLATION" 409 '.error == "DUPLICATE_VIOLATION"'
 
@@ -279,8 +268,6 @@ main() {
   ts=$(ts_for_case)
   post_evaluate FIXED "{\"measuredSpeed\":80,\"speedLimit\":60,\"equipmentId\":\"RAD-CWB-001\",\"captureTimestamp\":\"${ts}\"}"
   assert_case "Campo licensePlate ausente → 400" 400 '.error == "INVALID_LICENSE_PLATE"'
-
-  # --- GET /violations (33-42) ---
 
   get_violations ABC1D23
   assert_case "GET placa com registros (ABC1D23)" 200 '. | length >= 1'
@@ -311,8 +298,6 @@ main() {
 
   get_violations "ABC%20123"
   assert_case "GET placa com caracteres inválidos → 400" 400 '.error == "INVALID_LICENSE_PLATE"'
-
-  # --- Métodos HTTP e borda (43-50) ---
 
   raw_request GET "${API}/evaluate"
   assert_case "GET em /evaluate → 405 METHOD_NOT_ALLOWED" 405 '.error == "METHOD_NOT_ALLOWED"'

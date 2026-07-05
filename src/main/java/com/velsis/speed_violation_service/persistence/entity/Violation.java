@@ -92,7 +92,6 @@ public class Violation {
         this.origin = origin;
     }
 
-    // equals/hashCode manual (identidade JPA) — ver README § Lombok e equals/hashCode na entidade Violation
     @Override
     public boolean equals(Object other) {
         if (this == other) {

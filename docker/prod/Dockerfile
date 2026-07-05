@@ -1,6 +1,3 @@
-# Imagem de produção — build a partir da raiz do repositório:
-#   docker build -f docker/prod/Dockerfile -t speed-violation-service .
-
 FROM eclipse-temurin:21-jdk-alpine AS build
 WORKDIR /app
 
