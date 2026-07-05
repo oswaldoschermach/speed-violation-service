@@ -529,6 +529,34 @@ Alternativa possível seria truncar a margem antes de subtrair (`120 − trunc(8
 
 - Erros de validação retornam 400 com código estável (`INVALID_LICENSE_PLATE`, `INVALID_ORIGIN`, `INVALID_CAPTURE_TIMESTAMP`, ...) e são logados em nível `warn` com contexto de domínio (placa, equipamento, campo, código).
 - Erros inesperados retornam 500 com código `INTERNAL_ERROR` e mensagem genérica (`Internal server error`), logados em nível `error` com stack trace apenas no servidor — nunca exposto ao cliente (RF5).
+- Toda infração persistida gera um log de auditoria em nível `info` com contexto de domínio (placa, equipamento, gravidade, código CTB, percentual de excesso e timestamps). Isso separa o caminho de sucesso (`info`) dos caminhos de erro (`warn`/`error`), adequado a um domínio de fiscalização.
+
+### Validação de `captureTimestamp` no futuro (via `Clock` injetado)
+
+A checagem "captureTimestamp não pode estar no futuro" é feita na camada de domínio (`ViolationService`) comparando com o `Clock` injetado, em vez de `@PastOrPresent` (que usaria o relógio do sistema, fora do controle da aplicação).
+
+**Por quê?**
+
+- **Fonte única de tempo:** o mesmo `Clock` bean que define `processedAt` também define o "agora" da validação temporal — sem divergência entre relógios.
+- **Testabilidade:** a regra fica coberta por teste unitário com `Clock.fixed` (`ViolationServiceTest`), sem depender do relógio real.
+
+As demais validações de `captureTimestamp` (obrigatório e formato ISO-8601) permanecem declarativas via Bean Validation/Jackson. O contrato HTTP é idêntico: 400 com `INVALID_CAPTURE_TIMESTAMP` e mensagem `Capture timestamp cannot be in the future`.
+
+**Tolerância de clock skew (produção):** o `captureTimestamp` vem do relógio do *equipamento* (radar), não do servidor. Um pequeno adiantamento do relógio do equipamento (drift de NTP, latência de envio) faria uma captura legítima ser rejeitada como "futuro". Por isso a comparação usa uma tolerância configurável:
+
+```
+consideredFuture = captureTimestamp > (now + speed-violation.capture.future-tolerance)
+```
+
+Configuração externalizada (padrão `5s`, env `CAPTURE_FUTURE_TOLERANCE`):
+
+```yaml
+speed-violation:
+  capture:
+    future-tolerance: 5s   # aceita skew de até 5s; futuro real ainda é 400
+```
+
+Valores negativos ou ausentes são normalizados para `PT0S` (checagem estrita). Coberto por testes de fronteira (dentro da tolerância → aceita; além → 400).
 
 ### Mensagens de erro em inglês
 

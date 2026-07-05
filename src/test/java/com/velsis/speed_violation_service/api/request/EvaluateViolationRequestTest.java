@@ -8,7 +8,6 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import java.time.Instant;
-import java.time.temporal.ChronoUnit;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -80,15 +79,10 @@ class EvaluateViolationRequestTest {
     }
 
     @Test
-    @DisplayName("rejeita captureTimestamp nulo ou no futuro")
-    void shouldRejectInvalidCaptureTimestamp() {
+    @DisplayName("rejeita captureTimestamp nulo")
+    void shouldRejectNullCaptureTimestamp() {
         assertThat(validator.validate(validRequestWith(r -> new EvaluateViolationRequest(
                 r.licensePlate(), r.measuredSpeed(), r.speedLimit(), r.equipmentId(), null
-        )))).isNotEmpty();
-
-        Instant future = Instant.now().plus(1, ChronoUnit.HOURS);
-        assertThat(validator.validate(validRequestWith(r -> new EvaluateViolationRequest(
-                r.licensePlate(), r.measuredSpeed(), r.speedLimit(), r.equipmentId(), future
         )))).isNotEmpty();
     }
 

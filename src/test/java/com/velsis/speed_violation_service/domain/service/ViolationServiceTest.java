@@ -1,7 +1,9 @@
 package com.velsis.speed_violation_service.domain.service;
 
 import com.velsis.speed_violation_service.domain.exception.DuplicateViolationException;
+import com.velsis.speed_violation_service.domain.exception.FutureCaptureTimestampException;
 import com.velsis.speed_violation_service.api.response.EvaluateViolationResponse;
+import com.velsis.speed_violation_service.config.CaptureProperties;
 import com.velsis.speed_violation_service.config.ToleranceProperties;
 import com.velsis.speed_violation_service.domain.model.CaptureOrigin;
 import com.velsis.speed_violation_service.domain.model.EvaluateViolationCommand;
@@ -19,6 +21,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
 import java.time.Clock;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneOffset;
 
@@ -34,6 +37,7 @@ import static org.mockito.Mockito.when;
 class ViolationServiceTest {
 
     private static final Instant FIXED_INSTANT = Instant.parse("2026-06-08T14:30:05Z");
+    private static final Duration SKEW_TOLERANCE = Duration.ofSeconds(5);
 
     @Mock
     private ViolationRepository violationRepository;
@@ -47,9 +51,10 @@ class ViolationServiceTest {
     void setUp() {
         ViolationEvaluationService evaluationService =
                 new ViolationEvaluationService(new ToleranceProperties(7, 7, 100));
+        CaptureProperties captureProperties = new CaptureProperties(SKEW_TOLERANCE);
         Clock clock = Clock.fixed(FIXED_INSTANT, ZoneOffset.UTC);
         violationService = new ViolationService(
-                evaluationService, violationRepository, violationPersistenceService, clock);
+                evaluationService, violationRepository, violationPersistenceService, captureProperties, clock);
     }
 
     @Test
@@ -109,6 +114,43 @@ class ViolationServiceTest {
                 .hasMessage("Violation already registered for this capture");
 
         verify(violationPersistenceService, never()).persist(any());
+    }
+
+    @Test
+    @DisplayName("rejeita captura além da tolerância de skew, relativa ao Clock injetado, sem persistir")
+    void shouldRejectFutureCaptureBeyondSkewTolerance() {
+        EvaluateViolationCommand command = new EvaluateViolationCommand(
+                "ABC1D23",
+                92,
+                60,
+                "RAD-CWB-001",
+                FIXED_INSTANT.plus(SKEW_TOLERANCE).plusSeconds(1),
+                CaptureOrigin.FIXED
+        );
+
+        assertThatThrownBy(() -> violationService.evaluate(command))
+                .isInstanceOf(FutureCaptureTimestampException.class)
+                .hasMessage("Capture timestamp cannot be in the future");
+
+        verify(violationPersistenceService, never()).persist(any());
+    }
+
+    @Test
+    @DisplayName("aceita captura dentro da tolerância de skew (relógio de equipamento adiantado)")
+    void shouldAcceptFutureCaptureWithinSkewTolerance() {
+        EvaluateViolationCommand command = new EvaluateViolationCommand(
+                "ABC1D23",
+                92,
+                60,
+                "RAD-CWB-001",
+                FIXED_INSTANT.plusSeconds(3),
+                CaptureOrigin.FIXED
+        );
+
+        EvaluateViolationResponse response = violationService.evaluate(command);
+
+        assertThat(response.hasViolation()).isTrue();
+        verify(violationPersistenceService).persist(any());
     }
 
     private EvaluateViolationCommand command(int measuredSpeed, int speedLimit) {

@@ -4,7 +4,6 @@ import com.velsis.speed_violation_service.api.validation.ValidLicensePlate;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.PastOrPresent;
 import jakarta.validation.constraints.Positive;
 
 import java.time.Instant;
@@ -50,7 +49,6 @@ public record EvaluateViolationRequest(
                 format = "date-time",
                 requiredMode = Schema.RequiredMode.REQUIRED)
         @NotNull(message = "Capture timestamp is required")
-        @PastOrPresent(message = "Capture timestamp cannot be in the future")
         Instant captureTimestamp
 ) {
 }

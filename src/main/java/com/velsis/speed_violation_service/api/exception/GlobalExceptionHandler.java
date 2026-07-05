@@ -3,6 +3,7 @@ package com.velsis.speed_violation_service.api.exception;
 import com.fasterxml.jackson.databind.exc.InvalidFormatException;
 import com.velsis.speed_violation_service.api.request.EvaluateViolationRequest;
 import com.velsis.speed_violation_service.domain.exception.DuplicateViolationException;
+import com.velsis.speed_violation_service.domain.exception.FutureCaptureTimestampException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -119,6 +120,16 @@ public class GlobalExceptionHandler {
 
         String message = exception.getMessage();
         return message != null && message.contains("captureTimestamp");
+    }
+
+    @ExceptionHandler(FutureCaptureTimestampException.class)
+    public ResponseEntity<ApiErrorResponse> handleFutureCaptureTimestamp(FutureCaptureTimestampException exception) {
+        log.warn("Capture timestamp in the future: licensePlate={}, equipmentId={}, captureTimestamp={}",
+                exception.getLicensePlate(), exception.getEquipmentId(), exception.getCaptureTimestamp());
+        return buildResponse(
+                ErrorCode.INVALID_CAPTURE_TIMESTAMP,
+                exception.getMessage(),
+                HttpStatus.BAD_REQUEST);
     }
 
     @ExceptionHandler(DuplicateViolationException.class)

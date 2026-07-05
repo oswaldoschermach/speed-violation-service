@@ -22,6 +22,8 @@ speed-violation:
     kmh-margin: ${TOLERANCE_KMH_MARGIN:7}
     percent-margin: ${TOLERANCE_PERCENT_MARGIN:7}
     percent-threshold-kmh: ${TOLERANCE_PERCENT_THRESHOLD_KMH:100}
+  capture:
+    future-tolerance: ${CAPTURE_FUTURE_TOLERANCE:5s}
 
 springdoc:
   api-docs:
