@@ -4,7 +4,7 @@
 
 Microserviço REST para apuração de infrações por excesso de velocidade (prova prática Velsis).
 
-> **Avaliador / recrutador:** comece pelo [Guia rápido](#guia-rápido-recrutador) ou pela seção [Entrega](#entrega). Um comando sobe app + banco; teste via Swagger, Postman ou curl.
+> **Avaliador / recrutador:** API em produção em https://speed-violation-api.nebulax.com.br ([Swagger](https://speed-violation-api.nebulax.com.br/swagger-ui.html)). Para rodar localmente, use o [Guia rápido](#guia-rápido-recrutador) ou a seção [Entrega](#entrega).
 
 ## Tecnologias
 
@@ -15,7 +15,7 @@ Microserviço REST para apuração de infrações por excesso de velocidade (pro
 - Springdoc OpenAPI (Swagger)
 - Collection Postman (`docs/postman/`)
 - Docker (multi-stage) + Caddy (HTTPS automático) para deploy
-- GitHub Actions (CI: `mvnw verify` + build/push de imagem para GHCR)
+- GitHub Actions (CI: `mvnw verify` + build/push GHCR + deploy automático SSH na `main`)
 
 ## Pré-requisitos
 
@@ -156,20 +156,49 @@ Informações para avaliação da prova prática Velsis.
 | Item | URL |
 | ---- | --- |
 | Repositório Git (público) | https://github.com/oswaldoschermach/speed-violation-service |
-| API hospedada | _Pendente — deploy em VPS com domínio próprio e HTTPS (ver [docs/DEPLOY.md](docs/DEPLOY.md))_ |
+| **API em produção (HTTPS)** | https://speed-violation-api.nebulax.com.br |
+| Swagger em produção | https://speed-violation-api.nebulax.com.br/swagger-ui.html |
+| Health em produção | https://speed-violation-api.nebulax.com.br/actuator/health |
+| OpenAPI JSON (produção) | https://speed-violation-api.nebulax.com.br/api-docs |
+| CI (GitHub Actions) | https://github.com/oswaldoschermach/speed-violation-service/actions/workflows/ci.yml |
+| Imagem Docker (GHCR) | `ghcr.io/oswaldoschermach/speed-violation-service:latest` |
 | Swagger (local) | http://localhost:8080/swagger-ui.html |
 
-> Quando a API estiver no ar, atualize a linha **API hospedada** com a URL pública (ex.: `http://<IP>:8080` ou domínio com HTTPS).
+### Status da entrega
 
-### Passos de demo sugeridos
+| Requisito / diferencial | Status | Observação |
+| ----------------------- | ------ | ---------- |
+| RF1–RF4 (API, validações, persistência, consulta) | Concluído | Coberto por testes unitários, slice e integração |
+| README com instruções de execução | Concluído | [Guia rápido](#guia-rápido-recrutador) + Postman |
+| CI (`mvnw verify` no GitHub Actions) | Concluído | Job `test` em todo push/PR na `main` |
+| Aplicação hospedada com domínio e HTTPS | Concluído | Caddy + Let's Encrypt; DNS `speed-violation-api.nebulax.com.br` |
+| Deploy automático (push na `main`) | Concluído | Build GHCR + SSH no VPS ([docs/DEPLOY.md](docs/DEPLOY.md)) |
+| Collection Postman | Concluído | `docs/postman/` (ambiente local; ver opcionais abaixo) |
+| Duplicata 409 (`DUPLICATE_VIOLATION`) | Concluído | Extra em relação ao PDF; constraint única + testes de concorrência |
+| Validação de placa no `GET` | Concluído | `@ValidLicensePlate` no query param |
 
-1. **Subir o ambiente** — [Guia rápido](#guia-rápido-recrutador), passo 1 (`docker compose -f docker/local/compose.yaml up -d --build`)
-2. **Conferir saúde** — `curl http://localhost:8080/actuator/health` → `{"status":"UP"}`
-3. **Apurar infração** — Swagger, Postman (*Com infração*) ou curl do guia rápido → `hasViolation: true`, gravidade `SERIOUS`
+### Pendências e melhorias opcionais
+
+Itens **não bloqueiam** a entrega da prova; servem como evolução pós-demo:
+
+| Item | Prioridade | Notas |
+| ---- | ---------- | ----- |
+| Ambiente Postman de **produção** | Baixa | Hoje só existe `local.postman_environment.json`; basta trocar `baseUrl` para a URL HTTPS acima |
+| `docker compose` v2 no VPS | Baixa | VPS usa `docker-compose` v1; deploy contorna bug `ContainerConfig` (só atualiza `app`) — ver [DEPLOY.md](docs/DEPLOY.md) |
+| Avisos Node 16 nos Actions | Baixa | Warnings de depreciação em actions antigas; não afeta build nem deploy |
+| Restaurar outros stacks no VPS | Operacional | `user-service` foi parado para liberar 80/443 na demo; religar após a avaliação |
+| Autenticação / rate limit na API | Fora do escopo | Não exigido no PDF |
+
+### Passos de demo sugeridos (produção)
+
+1. **Health** — `curl -s https://speed-violation-api.nebulax.com.br/actuator/health` → `{"status":"UP"}`
+2. **Swagger** — abrir [Swagger em produção](https://speed-violation-api.nebulax.com.br/swagger-ui.html)
+3. **Apurar infração** — `POST /api/v1/violations/evaluate` (exemplo da prova) → `hasViolation: true`, gravidade `SERIOUS`
 4. **Consultar placa** — `GET /api/v1/violations?licensePlate=ABC1D23` → lista com o registro
-5. **Sem infração** — Postman *Sem infração* → `hasViolation: false`; consulta não ganha novo item
-6. **Validação** — Postman *Placa inválida* → 400; *Captura duplicada* → 409 (após passo 3)
-7. **(Opcional)** `./scripts/smoke-test-50.sh` — 50 cenários automatizados
+5. **Sem infração** — velocidade dentro do limite → `hasViolation: false`
+6. **Validação** — placa inválida → 400; captura duplicada → 409 (após passo 3)
+
+Demo local (sem internet): use o [Guia rápido](#guia-rápido-recrutador) com `docker/local`.
 
 ### Collection Postman
 
@@ -205,7 +234,7 @@ Cenários incluídos (alinhados ao Swagger):
 | **Limite 100 km/h** | Até 100 km/h inclusive → margem em km/h; acima de 100 → margem percentual. |
 | **Fronteiras de gravidade** | 20% → `MEDIUM`; acima de 20% até 50% → `SERIOUS`; acima de 50% → `VERY_SERIOUS`. |
 | **Mensagens de erro** | Em inglês, conforme contrato do PDF (`INVALID_LICENSE_PLATE`, etc.). |
-| **Deploy** | Perfil `prod` + `docker/prod/` (app + Postgres + Caddy com HTTPS automático) para VPS com domínio próprio; runbook em [docs/DEPLOY.md](docs/DEPLOY.md). URL pública será adicionada nesta seção após o deploy. |
+| **Deploy** | Perfil `prod` + `docker/prod/` (app + Postgres + Caddy com HTTPS). CI publica imagem no GHCR; deploy automático na `main`. Runbook: [docs/DEPLOY.md](docs/DEPLOY.md). **Produção:** https://speed-violation-api.nebulax.com.br |
 
 ### Instruções especiais
 

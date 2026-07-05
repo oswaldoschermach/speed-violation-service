@@ -1,5 +1,7 @@
 # Deploy em VPS com domínio (Docker + Caddy HTTPS + CI/CD)
 
+**Produção atual:** https://speed-violation-api.nebulax.com.br (VPS `157.180.124.235`, deploy automático na `main`).
+
 Guia para publicar o `speed-violation-service` em um VPS com domínio real e
 HTTPS automático (Let's Encrypt via Caddy). A imagem é buildada pelo **GitHub
 Actions** e publicada no **GHCR**; o VPS apenas **puxa a imagem e sobe a stack**
@@ -52,12 +54,12 @@ Painel Hostinger (**Domínios → DNS / Nameservers → Gerenciar registros DNS*
 
 | Tipo | Nome (host)       | Valor (aponta para) | TTL  |
 | ---- | ----------------- | ------------------- | ---- |
-| A    | `speed-violation` | `157.180.124.235`   | 3600 |
+| A    | `speed-violation-api` | `157.180.124.235`   | 3600 |
 
-Publica `speed-violation.nebulax.com.br`. Confirme a propagação:
+Publica `speed-violation-api.nebulax.com.br`. Confirme a propagação:
 
 ```bash
-dig +short speed-violation.nebulax.com.br    # deve retornar 157.180.124.235
+dig +short speed-violation-api.nebulax.com.br    # deve retornar 157.180.124.235
 ```
 
 > O certificado só é emitido quando o DNS já resolve para o VPS e as portas 80/443 estão acessíveis.
@@ -96,7 +98,7 @@ Defina no mínimo:
 POSTGRES_DB=speed_violation
 POSTGRES_USER=speed_violation
 POSTGRES_PASSWORD=<senha_forte_aqui>
-APP_DOMAIN=speed-violation.nebulax.com.br
+APP_DOMAIN=speed-violation-api.nebulax.com.br
 LETSENCRYPT_EMAIL=voce@nebulax.com.br
 APP_IMAGE=ghcr.io/oswaldoschermach/speed-violation-service:latest
 ```
@@ -129,18 +131,18 @@ docker compose -f docker/prod/compose.yaml --env-file docker/prod/.env logs -f c
 ## Passo 6 — Verificar
 
 ```bash
-curl -s https://speed-violation.nebulax.com.br/actuator/health      # {"status":"UP"}
+curl -s https://speed-violation-api.nebulax.com.br/actuator/health      # {"status":"UP"}
 
-curl -s -X POST https://speed-violation.nebulax.com.br/api/v1/violations/evaluate \
+curl -s -X POST https://speed-violation-api.nebulax.com.br/api/v1/violations/evaluate \
   -H "Content-Type: application/json" \
   -H "x-origin: FIXED" \
   -d '{"licensePlate":"ABC1D23","measuredSpeed":92,"speedLimit":60,"equipmentId":"RAD-CWB-001","captureTimestamp":"2026-06-08T14:30:00Z"}'
 ```
 
-- Swagger UI: `https://speed-violation.nebulax.com.br/swagger-ui.html`
-- OpenAPI JSON: `https://speed-violation.nebulax.com.br/api-docs`
+- Swagger UI: `https://speed-violation-api.nebulax.com.br/swagger-ui.html`
+- OpenAPI JSON: `https://speed-violation-api.nebulax.com.br/api-docs`
 
-Depois de validar, atualize a linha **API hospedada** na seção [Entrega](../README.md#entrega) do README.
+URL pública documentada na seção [Entrega](../README.md#entrega) do README.
 
 ## Atualizações (nova versão) — deploy manual
 
