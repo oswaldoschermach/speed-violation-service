@@ -96,6 +96,10 @@ jobs:
             else
               DC="docker-compose"
             fi
-            $DC -f docker/prod/compose.yaml --env-file docker/prod/.env pull
-            $DC -f docker/prod/compose.yaml --env-file docker/prod/.env up -d --remove-orphans
+            COMPOSE="-f docker/prod/compose.yaml --env-file docker/prod/.env"
+            # docker-compose v1 bug: "Recreating" after pull → KeyError ContainerConfig.
+            # Pull/replace only app; postgres/caddy stay running (volumes + TLS certs preserved).
+            $DC $COMPOSE pull app
+            docker rm -f speed-violation-app-prod 2>/dev/null || true
+            $DC $COMPOSE up -d --no-deps app
             docker image prune -f

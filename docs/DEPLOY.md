@@ -149,9 +149,12 @@ Cada push na `main` republica a imagem `:latest` no GHCR. No VPS:
 ```bash
 cd <pasta_do_deploy>
 git pull --ff-only        # atualiza compose.yaml/Caddyfile
-docker compose -f docker/prod/compose.yaml --env-file docker/prod/.env pull
-docker compose -f docker/prod/compose.yaml --env-file docker/prod/.env up -d
+docker-compose -f docker/prod/compose.yaml --env-file docker/prod/.env pull app
+docker rm -f speed-violation-app-prod 2>/dev/null || true
+docker-compose -f docker/prod/compose.yaml --env-file docker/prod/.env up -d --no-deps app
 ```
+
+> **docker-compose v1 (`ContainerConfig`):** `pull` + `up -d` em todos os serviços pode falhar com `KeyError: 'ContainerConfig'`. Atualize só o `app` (comandos acima) ou use `down` + `up -d` para stack completa (dados do Postgres ficam no volume).
 
 ## Deploy automático via SSH (opcional)
 
