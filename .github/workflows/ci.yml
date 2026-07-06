@@ -144,7 +144,12 @@ jobs:
       - name: SonarCloud scan
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-        run: ./mvnw -B --no-transfer-progress sonar:sonar -Dsonar.token=$SONAR_TOKEN
+        run: >
+          ./mvnw -B --no-transfer-progress sonar:sonar
+          -Dsonar.token=$SONAR_TOKEN
+          -Dsonar.organization=oswaldoschermach
+          -Dsonar.projectKey=oswaldoschermach_speed-violation-service
+          -Dsonar.host.url=https://sonarcloud.io
 
   trivy-filesystem:
     name: 6 · Trivy filesystem scan
