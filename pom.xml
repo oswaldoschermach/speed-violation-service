@@ -18,8 +18,8 @@
 		<springdoc.version>2.8.9</springdoc.version>
 		<jacoco.version>0.8.12</jacoco.version>
 		<sonar.maven.plugin.version>5.0.0.4389</sonar.maven.plugin.version>
-		<excludedGroups>integration,smoke</excludedGroups>
 		<groups></groups>
+		<skipUnitTests>false</skipUnitTests>
 	</properties>
 	<dependencies>
 		<dependency>
@@ -101,8 +101,9 @@
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-surefire-plugin</artifactId>
 				<configuration>
+					<skipTests>${skipUnitTests}</skipTests>
 					<groups>${groups}</groups>
-					<excludedGroups>${excludedGroups}</excludedGroups>
+					<excludedGroups>integration,smoke</excludedGroups>
 				</configuration>
 			</plugin>
 
@@ -110,7 +111,11 @@
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-failsafe-plugin</artifactId>
 				<configuration>
+					<includes>
+						<include>**/*Test.java</include>
+					</includes>
 					<groups>integration</groups>
+					<skipTests>false</skipTests>
 				</configuration>
 				<executions>
 					<execution>
