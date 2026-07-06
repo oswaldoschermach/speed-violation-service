@@ -16,7 +16,8 @@ LABEL org.opencontainers.image.title="speed-violation-service" \
       org.opencontainers.image.description="Microserviço REST — apuração de infrações por excesso de velocidade" \
       org.opencontainers.image.source="https://github.com/oswaldoschermach/speed-violation-service"
 
-RUN apk add --no-cache curl \
+RUN apk upgrade --no-cache \
+    && apk add --no-cache curl \
     && addgroup -S spring \
     && adduser -S spring -G spring
 

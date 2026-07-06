@@ -9,31 +9,37 @@ Este documento explica **como o pipeline funciona**, **por que cada etapa existe
 
 ## Visão geral do fluxo
 
+Estratégia: **fail-fast sequencial** nos testes (barato → caro) e **bloqueio total** antes de Docker/publish. PR valida qualidade sem gastar minutos em build de imagem.
+
 ```
 Commit / PR / manual
         │
         ▼
 ┌───────────────────┐
-│ 1. Build          │  Compila código + classes de teste (falha rápido se há erro de sintaxe)
+│ 1. Build          │  compile (falha em ~30s se código não compila)
 └─────────┬─────────┘
           ▼
-┌───────────────────┐     ┌───────────────────┐
-│ 2. Unit tests     │     │ 3. Smoke (Maven)  │  Paralelos após build
-└─────────┬─────────┘     └─────────┬─────────┘
-          └───────────┬─────────────┘
-                      ▼
 ┌───────────────────┐
-│ 4. Integration    │  Testcontainers + JaCoCo gate (80% domain.service)
+│ 2. Unit tests     │  ~15s — falha aqui aborta tudo abaixo
+└─────────┬─────────┘
+          ▼
+┌───────────────────┐
+│ 3. Smoke (Maven)  │  só se unit passou
+└─────────┬─────────┘
+          ▼
+┌───────────────────┐
+│ 4. Integration    │  Testcontainers + JaCoCo 80%
 │    + Coverage     │
 └─────────┬─────────┘
           ▼
 ┌───────────────────┐     ┌───────────────────┐
-│ 5. Sonar (opt.)   │     │ 6. Trivy FS       │  Sonar após integração; Trivy FS após build
+│ 5. Sonar (opt.)   │     │ 6. Trivy FS       │  só após integração OK
 └─────────┬─────────┘     └─────────┬─────────┘
           └───────────┬─────────────┘
                       ▼
+          (somente em push na main/develop)
 ┌───────────────────┐
-│ 7. Docker build   │
+│ 7. Docker build   │  1× build — reutilizado no publish
 └─────────┬─────────┘
           ▼
 ┌───────────────────┐
@@ -41,22 +47,38 @@ Commit / PR / manual
 └─────────┬─────────┘
           ▼
 ┌───────────────────┐
-│ 9. Deploy simulado│  docker/ci/compose.yaml + smoke-test-ci.sh
-│    + Smoke HTTP   │
+│ 9. Deploy simulado│  compose + smoke HTTP
 └─────────┬─────────┘
           ▼
 ┌───────────────────┐
-│ 10. Publish GHCR  │  Só em push; só se TODOS os jobs anteriores passarem
+│ 10. Publish GHCR  │  tag + push da imagem já escaneada (sem rebuild)
 └─────────┬─────────┘
           ▼
 ┌───────────────────┐
-│ Deploy produção   │  Workflow separado; só se CI passou + DEPLOY_ENABLED=true
+│ Deploy produção   │  workflow separado; CI verde + DEPLOY_ENABLED
 └───────────────────┘
 ```
 
+### Economia de minutos
+
+| Decisão | Por quê |
+| ------- | ------- |
+| Testes em **série** (unit → smoke → integration) | Se unit falha (~15s), não roda Testcontainers nem Trivy |
+| Trivy FS **após** integração | Não escaneia repo com código que já falhou nos testes |
+| Docker **só em push** | PR valida testes + Sonar + Trivy FS sem build de imagem (~3–5 min economizados) |
+| Publish **reusa** imagem do job 7 | Evita segundo `docker build` completo |
+| `concurrency: cancel-in-progress` | Novo push cancela run anterior na mesma branch |
+| `timeout-minutes` em cada job | Evita runner preso consumindo minutos |
+
+### Fail-fast e abort
+
+Cada job declara `needs:`. Se **qualquer** dependência falha, os jobs seguintes **não iniciam**. O job `docker` exige integração + Trivy FS + Sonar (ou Sonar pulado) com sucesso.
+
+**PR:** jobs 1–6 rodam. **Push:** pipeline completo 1–10.
+
 ### Por que o deploy falha se os testes falharem?
 
-Cada job usa `needs:` para declarar dependências. Se **qualquer** job falhar, os jobs seguintes **não executam**. O job `publish-image` (publicação no GHCR) e o `deploy-production` (VPS) só rodam quando toda a cadeia de qualidade passou.
+Cada job usa `needs:` para declarar dependências. Se **qualquer** job obrigatório falhar, os jobs seguintes **não iniciam** (economiza minutos). O `docker` exige integração + Trivy FS + Sonar OK (ou Sonar desligado). Jobs 7–10 só rodam em **push**; em PR valida-se até o job 6.
 
 Isso evita publicar imagens quebradas ou deployar código que não passou nos gates — prática padrão em empresas de médio/grande porte.
 
@@ -269,6 +291,22 @@ Arquivo: [`sonar-project.properties`](../sonar-project.properties)
 2. Ajustar `sonar.organization` e `sonar.projectKey` em `sonar-project.properties`
 3. GitHub → Secret `SONAR_TOKEN`
 4. GitHub → Variable `SONAR_ENABLED=true`
+5. **Desativar Automatic Analysis** (obrigatório para análise via CI com cobertura JaCoCo):
+   - [Analysis Method do projeto](https://sonarcloud.io/project/configuration/analysis_method?id=oswaldoschermach_speed-violation-service)
+   - **Administration** → **Analysis Method** → desligar **Automatic Analysis**
+   - O pipeline também tenta desativar via API antes do scan (idempotente)
+
+### Erro: "CI analysis while Automatic Analysis is enabled"
+
+SonarCloud não permite **duas fontes de análise** no mesmo projeto. Como o pipeline envia cobertura JaCoCo pelo Maven, a Automatic Analysis precisa estar **OFF**.
+
+| Solução | Quando usar |
+| ------- | ----------- |
+| UI: Analysis Method → OFF | Correção imediata (1 clique, sem novo deploy) |
+| Re-run do job `sonar` após desligar | Valida sem commit |
+| Step `Disable Automatic Analysis` no CI | Automático em cada run (usa `SONAR_TOKEN`) |
+
+**Por que `sonar-project.properties` não basta?** Projetos importados pelo GitHub App já podem ter Automatic Analysis ligada; o ficheiro impede auto-scan em projetos novos, mas não desliga o que já estava ativo.
 
 ### Comando local
 
@@ -330,11 +368,11 @@ Stack CI (sem Caddy): [`docker/ci/compose.yaml`](../docker/ci/compose.yaml)
 |---|-----|----------|--------------|------------|
 | 1 | `build` | Compilar | Erro de compilação | — |
 | 2 | `unit-tests` | Testes rápidos | Assertion/mock falha | build |
-| 3 | `smoke-tests` | Saúde mínima Maven | Health/evaluate falha | build |
-| 4 | `integration-tests` | E2E + JaCoCo gate | Integração ou coverage < 80% | unit + smoke |
+| 3 | `smoke-tests` | Saúde mínima Maven | Health/evaluate falha | unit-tests |
+| 4 | `integration-tests` | E2E + JaCoCo gate | Integração ou coverage < 80% | smoke-tests |
 | 5 | `sonar` | Análise estática | Quality Gate Sonar | integration |
-| 6 | `trivy-filesystem` | CVE no repo | CRITICAL/HIGH | build |
-| 7 | `docker` | Build imagem | Dockerfile inválido | integration + trivy-fs |
+| 6 | `trivy-filesystem` | CVE no repo | CRITICAL/HIGH | integration |
+| 7 | `docker` | Build imagem (push only) | Dockerfile inválido | integration + trivy-fs + sonar* |
 | 8 | `trivy-image` | CVE na imagem | CRITICAL/HIGH | docker |
 | 9 | `deploy-simulated` | Compose + smoke HTTP | Container ou API down | docker + trivy-image |
 | 10 | `publish-image` | Push GHCR | Build/push falha | deploy-simulated |
