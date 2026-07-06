@@ -92,8 +92,8 @@ jobs:
           java-version: ${{ env.JAVA_VERSION }}
           cache: maven
 
-      - name: Run integration tests + JaCoCo gate
-        run: ./mvnw -B --no-transfer-progress verify -DskipUnitTests=true
+      - name: Run full test suite + JaCoCo gate
+        run: ./mvnw -B --no-transfer-progress verify
 
       - name: Upload JaCoCo report
         if: success()

@@ -51,6 +51,115 @@ class ViolationControllerTest {
     }
 
     @Test
+    @DisplayName("POST /evaluate com measuredSpeed inválido retorna 400")
+    void shouldRejectInvalidMeasuredSpeed() throws Exception {
+        mockMvc.perform(post("/api/v1/violations/evaluate")
+                        .header("x-origin", "FIXED")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "licensePlate": "ABC1D23",
+                                  "measuredSpeed": 0,
+                                  "speedLimit": 60,
+                                  "equipmentId": "RAD-CWB-001",
+                                  "captureTimestamp": "2026-06-08T14:30:00Z"
+                                }
+                                """))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("INVALID_MEASURED_SPEED"));
+    }
+
+    @Test
+    @DisplayName("POST /evaluate com speedLimit inválido retorna 400")
+    void shouldRejectInvalidSpeedLimit() throws Exception {
+        mockMvc.perform(post("/api/v1/violations/evaluate")
+                        .header("x-origin", "FIXED")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "licensePlate": "ABC1D23",
+                                  "measuredSpeed": 92,
+                                  "speedLimit": 0,
+                                  "equipmentId": "RAD-CWB-001",
+                                  "captureTimestamp": "2026-06-08T14:30:00Z"
+                                }
+                                """))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("INVALID_SPEED_LIMIT"));
+    }
+
+    @Test
+    @DisplayName("POST /evaluate com equipmentId em branco retorna 400")
+    void shouldRejectBlankEquipmentId() throws Exception {
+        mockMvc.perform(post("/api/v1/violations/evaluate")
+                        .header("x-origin", "FIXED")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "licensePlate": "ABC1D23",
+                                  "measuredSpeed": 92,
+                                  "speedLimit": 60,
+                                  "equipmentId": "",
+                                  "captureTimestamp": "2026-06-08T14:30:00Z"
+                                }
+                                """))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("INVALID_EQUIPMENT_ID"));
+    }
+
+    @Test
+    @DisplayName("POST /evaluate com JSON malformado retorna 400")
+    void shouldRejectMalformedJsonBody() throws Exception {
+        mockMvc.perform(post("/api/v1/violations/evaluate")
+                        .header("x-origin", "FIXED")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("INVALID_REQUEST"))
+                .andExpect(jsonPath("$.message").value("Malformed request body"));
+    }
+
+    @Test
+    @DisplayName("POST /evaluate com x-origin inválido retorna 400")
+    void shouldRejectInvalidOriginHeader() throws Exception {
+        mockMvc.perform(post("/api/v1/violations/evaluate")
+                        .header("x-origin", "INVALID")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "licensePlate": "ABC1D23",
+                                  "measuredSpeed": 92,
+                                  "speedLimit": 60,
+                                  "equipmentId": "RAD-CWB-001",
+                                  "captureTimestamp": "2026-06-08T14:30:00Z"
+                                }
+                                """))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("INVALID_ORIGIN"));
+    }
+
+    @Test
+    @DisplayName("POST /evaluate propaga erro inesperado como 500")
+    void shouldReturnInternalErrorWhenServiceFails() throws Exception {
+        when(violationService.evaluate(any())).thenThrow(new IllegalStateException("boom"));
+
+        mockMvc.perform(post("/api/v1/violations/evaluate")
+                        .header("x-origin", "FIXED")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "licensePlate": "ABC1D23",
+                                  "measuredSpeed": 92,
+                                  "speedLimit": 60,
+                                  "equipmentId": "RAD-CWB-001",
+                                  "captureTimestamp": "2026-06-08T14:30:00Z"
+                                }
+                                """))
+                .andExpect(status().isInternalServerError())
+                .andExpect(jsonPath("$.error").value("INTERNAL_ERROR"));
+    }
+
+    @Test
     @DisplayName("POST /evaluate delega para o service e retorna 200")
     void shouldEvaluateViolation() throws Exception {
         when(violationService.evaluate(any())).thenReturn(new EvaluateViolationResponse(
