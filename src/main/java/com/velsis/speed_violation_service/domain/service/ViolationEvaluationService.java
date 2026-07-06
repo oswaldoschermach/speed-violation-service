@@ -23,7 +23,7 @@ public class ViolationEvaluationService {
             return BigDecimal.ZERO.setScale(2, RoundingMode.UNNECESSARY);
         }
 
-        return BigDecimal.valueOf(consideredSpeed - speedLimit)
+        return BigDecimal.valueOf((long) consideredSpeed - speedLimit)
                 .multiply(BigDecimal.valueOf(100))
                 .divide(BigDecimal.valueOf(speedLimit), 2, RoundingMode.HALF_UP);
     }
