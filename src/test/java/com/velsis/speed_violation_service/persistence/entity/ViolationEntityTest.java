@@ -30,9 +30,13 @@ class ViolationEntityTest {
         setId(second, id);
 
         assertThat(first).isEqualTo(second);
-        assertThat(first).isEqualTo(first);
-        assertThat(first).isNotEqualTo("other");
+        assertThat(first.equals("other")).isFalse();
         assertThat(first).isNotEqualTo(sampleViolation());
+
+        Violation differentId = sampleViolation();
+        setId(differentId, UUID.randomUUID());
+        assertThat(first).isNotEqualTo(differentId);
+
         assertThat(first.hashCode()).isEqualTo(second.hashCode());
     }
 
