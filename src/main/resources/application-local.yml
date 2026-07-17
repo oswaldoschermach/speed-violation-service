@@ -6,7 +6,7 @@ spring:
 
 logging:
   level:
-    com.velsis.speed_violation_service: DEBUG
+    com.nebulax.speed_violation_service: DEBUG
 
 management:
   endpoints:

@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/oswaldoschermach/speed-violation-service/actions/workflows/ci.yml/badge.svg)](https://github.com/oswaldoschermach/speed-violation-service/actions/workflows/ci.yml)
 
-Microserviço REST para apuração de infrações por excesso de velocidade (prova prática Velsis).
+Microserviço REST para apuração de infrações por excesso de velocidade.
 
 > **Avaliador / recrutador:** API em produção em https://speed-violation-api.nebulax.com.br ([Swagger](https://speed-violation-api.nebulax.com.br/swagger-ui.html)). Para rodar localmente, use o [Guia rápido](#guia-rápido-recrutador) ou a seção [Entrega](#entrega).
 
@@ -149,7 +149,7 @@ docker compose -f docker/local/compose.yaml --env-file docker/local/.env up -d -
 
 ## Entrega
 
-Informações para avaliação da prova prática Velsis.
+Links e status do projeto (API, CI e deploy).
 
 ### Links
 
@@ -179,7 +179,7 @@ Informações para avaliação da prova prática Velsis.
 
 ### Pendências e melhorias opcionais
 
-Itens **não bloqueiam** a entrega da prova; servem como evolução pós-demo:
+Itens **não bloqueiam** a entrega; servem como evolução pós-demo:
 
 | Item | Prioridade | Notas |
 | ---- | ---------- | ----- |
@@ -193,7 +193,7 @@ Itens **não bloqueiam** a entrega da prova; servem como evolução pós-demo:
 
 1. **Health** — `curl -s https://speed-violation-api.nebulax.com.br/actuator/health` → `{"status":"UP"}`
 2. **Swagger** — abrir [Swagger em produção](https://speed-violation-api.nebulax.com.br/swagger-ui.html)
-3. **Apurar infração** — `POST /api/v1/violations/evaluate` (exemplo da prova) → `hasViolation: true`, gravidade `SERIOUS`
+3. **Apurar infração** — `POST /api/v1/violations/evaluate` (exemplo de referência) → `hasViolation: true`, gravidade `SERIOUS`
 4. **Consultar placa** — `GET /api/v1/violations?licensePlate=ABC1D23` → lista com o registro
 5. **Sem infração** — velocidade dentro do limite → `hasViolation: false`
 6. **Validação** — placa inválida → 400; captura duplicada → 409 (após passo 3)
@@ -214,7 +214,7 @@ Cenários incluídos (alinhados ao Swagger):
 
 | Request | Resultado esperado |
 | ------- | ------------------ |
-| Com infração (exemplo da prova) | 200, `SERIOUS`, `41.67%` |
+| Com infração (exemplo de referência) | 200, `SERIOUS`, `41.67%` |
 | Sem infração | 200, `hasViolation: false` |
 | Placa formato antigo | 200, placa `ABC1234` aceita |
 | Via acima de 100 km/h | 200, tolerância percentual |
@@ -304,7 +304,7 @@ A documentação OpenAPI está completa com **exemplos prontos** para o recrutad
 1. Acesse `http://localhost:8080/swagger-ui.html`
 2. Expanda **Infrações** → **POST /api/v1/violations/evaluate**
 3. Clique em **Try it out**
-4. Selecione um exemplo no dropdown do body (ex.: *Com infração (exemplo da prova)*)
+4. Selecione um exemplo no dropdown do body (ex.: *Com infração (exemplo de referência)*)
 5. Informe o header `x-origin` (ex.: `FIXED`) e execute
 6. Consulte a placa em **GET /api/v1/violations** com o mesmo valor
 
@@ -312,7 +312,7 @@ Exemplos disponíveis no Swagger:
 
 | Exemplo | Resultado esperado |
 | -------- | ------------------ |
-| Com infração (exemplo da prova) | `hasViolation: true`, gravidade `SERIOUS` |
+| Com infração (exemplo de referência) | `hasViolation: true`, gravidade `SERIOUS` |
 | Sem infração (dentro da tolerância) | `hasViolation: false`, `violation: null` |
 | Placa formato antigo | Placa `ABC1234` aceita |
 | Via acima de 100 km/h | Tolerância percentual truncada |
@@ -490,9 +490,9 @@ O enunciado aceita armazenamento **em memória**. Optamos por **PostgreSQL + Fly
 - Índices por `license_plate` (e `license_plate, processed_at`) tornam a consulta por placa eficiente mesmo com volume
 - Constraint única `(license_plate, equipment_id, capture_timestamp)` impede duplicatas; reenvios retornam **409** (`DUPLICATE_VIOLATION`)
 
-**Trade-off assumido:** rodar/hospedar exige um Postgres disponível (via `docker/local` ou banco gerenciado no deploy). Para o escopo desta prova consideramos que a robustez de persistência e concorrência compensa a dependência extra. Uma estrutura em memória (`ConcurrentHashMap`) seria suficiente e removeria a dependência, ao custo de perder durabilidade.
+**Trade-off assumido:** rodar/hospedar exige um Postgres disponível (via `docker/local` ou banco gerenciado no deploy). Para o escopo deste projeto consideramos que a robustez de persistência e concorrência compensa a dependência extra. Uma estrutura em memória (`ConcurrentHashMap`) seria suficiente e removeria a dependência, ao custo de perder durabilidade.
 
-A API exposta (`POST /evaluate`, `GET ?licensePlate=`) permanece igual ao contrato da prova.
+A API exposta (`POST /evaluate`, `GET ?licensePlate=`) permanece igual ao contrato da API.
 
 ### Identificador `UUID` na entidade `Violation`
 
@@ -502,7 +502,7 @@ A tabela `violations` usa `UUID` como chave primária (`gen_random_uuid()` no Po
 
 - **Microserviço:** UUID evita colisão de IDs em cenários distribuídos
 - **Identificador opaco:** não expõe sequência previsível
-- **API:** o contrato da prova **não expõe** o `id` na resposta; consulta principal é por `license_plate`
+- **API:** o contrato da API **não expõe** o `id` na resposta; consulta principal é por `license_plate`
 
 **Alternativa considerada:** `Long` com `BIGSERIAL` seria mais simples para escopo isolado.
 
@@ -557,7 +557,7 @@ Neste escopo:
 - Entrada única: REST
 - Saída única: PostgreSQL via Spring Data JPA
 - Sem integrações externas além do banco
-- Prazo e escopo de prova prática (qualidade > quantidade de camadas)
+- Foco em qualidade sobre quantidade de camadas
 
 Introduzir ports/adapters aqui seria **over-engineering**: mais interfaces e classes de glue para o mesmo comportamento, dificultando a leitura para quem revisa o repositório.
 

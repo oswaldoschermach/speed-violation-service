@@ -12,7 +12,7 @@ server:
 logging:
   level:
     root: WARN
-    com.velsis.speed_violation_service: INFO
+    com.nebulax.speed_violation_service: INFO
 
 management:
   endpoints:

@@ -144,7 +144,7 @@ main() {
 
   ts=$(ts_for_case)
   post_evaluate FIXED "{\"licensePlate\":\"ABC1D23\",\"measuredSpeed\":92,\"speedLimit\":60,\"equipmentId\":\"RAD-CWB-001\",\"captureTimestamp\":\"${ts}\"}"
-  assert_case "Infração SERIOUS (exemplo da prova)" 200 '.hasViolation == true and .violation.severity == "SERIOUS" and .consideredSpeed == 85'
+  assert_case "Infração SERIOUS (exemplo de referência)" 200 '.hasViolation == true and .violation.severity == "SERIOUS" and .consideredSpeed == 85'
 
   ts=$(ts_for_case)
   post_evaluate MOBILE "{\"licensePlate\":\"ABC1D23\",\"measuredSpeed\":64,\"speedLimit\":60,\"equipmentId\":\"RAD-CWB-002\",\"captureTimestamp\":\"${ts}\"}"
